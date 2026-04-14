@@ -67,11 +67,17 @@ class VoteService extends BaseDocumentService<VoteDocument> {
       throw new Error('At least one option must be selected');
     }
 
-    // Encode selectedOptions as Uint8Array (each byte = one option index)
+    // Encode selectedOptions as number[] (same format used for question/options byte arrays)
+    // Must be number[], NOT Uint8Array — Uint8Array serializes as a plain object {'0': val}
+    // which the WASM Document constructor doesn't recognize as a byte array.
+    const bytes: number[] = [];
+    for (const opt of selectedOptions) {
+      bytes.push(opt & 0xFF);
+    }
     return this.create(ownerId, {
       pollId: stringToIdentifierBytes(pollId),
       pollOwnerId: stringToIdentifierBytes(pollOwnerId),
-      selectedOptions: new Uint8Array(selectedOptions),
+      selectedOptions: bytes,
     });
   }
 
