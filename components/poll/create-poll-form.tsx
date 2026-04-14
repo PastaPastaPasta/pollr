@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { X, Plus } from 'lucide-react'
 
 const MAX_QUESTION_LENGTH = 280
+const MAX_OPTION_LENGTH = 200
 const MIN_OPTIONS = 2
 const MAX_OPTIONS = 10
 
@@ -36,6 +37,7 @@ export function CreatePollForm() {
   }
 
   const handleOptionChange = (index: number, value: string) => {
+    if (value.length > MAX_OPTION_LENGTH) return
     setOptions((prev) => {
       const updated = [...prev]
       updated[index] = value
@@ -70,6 +72,18 @@ export function CreatePollForm() {
 
     if (trimmedOptions.length < MIN_OPTIONS) {
       toast.error('At least 2 non-empty options are required')
+      return
+    }
+
+    // Check byte lengths to avoid silent platform rejection for multibyte chars
+    const questionBytes = new TextEncoder().encode(question.trim()).length
+    const optionsBytes = new TextEncoder().encode(JSON.stringify(trimmedOptions)).length
+    if (questionBytes > 1024) {
+      toast.error('Question is too long (reduce characters or emoji)')
+      return
+    }
+    if (optionsBytes > 4096) {
+      toast.error('Options are too long — shorten some option text')
       return
     }
 
@@ -137,12 +151,20 @@ export function CreatePollForm() {
             </label>
             {options.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
-                <Input
-                  placeholder={`Option ${index + 1}`}
-                  value={option}
-                  onChange={(e) => handleOptionChange(index, e.target.value)}
-                  disabled={isSubmitting}
-                />
+                <div className="relative flex-1">
+                  <Input
+                    placeholder={`Option ${index + 1}`}
+                    value={option}
+                    onChange={(e) => handleOptionChange(index, e.target.value)}
+                    disabled={isSubmitting}
+                    maxLength={MAX_OPTION_LENGTH}
+                  />
+                  {option.length > MAX_OPTION_LENGTH * 0.8 && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                      {option.length}/{MAX_OPTION_LENGTH}
+                    </span>
+                  )}
+                </div>
                 {canRemoveOption && (
                   <Button
                     type="button"

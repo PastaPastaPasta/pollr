@@ -137,14 +137,7 @@ export abstract class BaseDocumentService<T> {
       // Clear relevant caches
       this.clearCache();
 
-      const transformed = this.transformDocument(result.document);
-
-      // Preserve creation confirmation status for callers that need UX handling.
-      if (typeof result.confirmed === 'boolean' && transformed && typeof transformed === 'object') {
-        (transformed as Record<string, unknown>).__createConfirmed = result.confirmed;
-      }
-
-      return transformed;
+      return this.transformDocument(result.document);
     } catch (error) {
       logger.error(`Error creating ${this.documentType} document:`, error);
       throw error;

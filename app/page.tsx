@@ -15,9 +15,10 @@ interface PollListContentProps {
   isReady: boolean
   isLoading: boolean
   polls: PollDocument[]
+  error: string | null
 }
 
-function PollListContent({ isReady, isLoading, polls }: PollListContentProps) {
+function PollListContent({ isReady, isLoading, polls, error }: PollListContentProps) {
   if (!isReady) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-500">
@@ -33,6 +34,15 @@ function PollListContent({ isReady, isLoading, polls }: PollListContentProps) {
         <PollSkeleton />
         <PollSkeleton />
         <PollSkeleton />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-red-500 mb-2">{error}</p>
+        <p className="text-sm text-gray-400">Please check your connection and try again.</p>
       </div>
     )
   }
@@ -70,7 +80,7 @@ function PollListContent({ isReady, isLoading, polls }: PollListContentProps) {
 
 export default function HomePage() {
   const { isReady } = useSdk()
-  const { polls, isLoading } = usePolls()
+  const { polls, isLoading, error } = usePolls()
 
   return (
     <div className="space-y-8">
@@ -104,7 +114,7 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <PollListContent isReady={isReady} isLoading={isLoading} polls={polls} />
+        <PollListContent isReady={isReady} isLoading={isLoading} polls={polls} error={error} />
       </div>
     </div>
   )

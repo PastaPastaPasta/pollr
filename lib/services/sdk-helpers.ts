@@ -264,43 +264,6 @@ export function getCurrentUserId(): string | null {
   return null;
 }
 
-/**
- * User type with hasDpns flag for display components.
- */
-export interface DefaultUser {
-  id: string;
-  username: string;
-  displayName: string;
-  avatar: string;
-  bio: string;
-  followers: number;
-  following: number;
-  verified: boolean;
-  joinedAt: Date;
-  hasDpns: boolean;
-}
-
-/**
- * Create a default user object when profile not found.
- * Sets username to empty string and hasDpns to false so display components
- * can properly show the identity ID instead of a fake username.
- */
-export function createDefaultUser(userId: string | undefined): DefaultUser {
-  const id = userId || 'unknown';
-  return {
-    id,
-    username: '',
-    displayName: 'Unknown User',
-    avatar: '',
-    bio: '',
-    followers: 0,
-    following: 0,
-    verified: false,
-    joinedAt: new Date(),
-    hasDpns: false
-  };
-}
-
 export interface QueryDocumentsOptions {
   dataContractId: string;
   documentTypeName: string;
