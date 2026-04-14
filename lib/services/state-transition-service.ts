@@ -3,11 +3,11 @@ import { getEvoSdk } from './evo-sdk-service';
 import { SecurityLevel, KeyPurpose, signerService } from './signer-service';
 import { documentBuilderService } from './document-builder-service';
 import { findMatchingKeyIndex, getSecurityLevelName, type IdentityPublicKeyInfo } from '@/lib/crypto/keys';
-import { IdentityPublicKey as WasmIdentityPublicKeyClass } from '@dashevo/wasm-sdk';
-type WasmIdentityPublicKey = InstanceType<typeof WasmIdentityPublicKeyClass>;
+import type { IdentityPublicKey } from '@dashevo/wasm-sdk';
+type WasmIdentityPublicKey = InstanceType<typeof IdentityPublicKey>;
 import { promptForAuthKey } from '../auth-utils';
 import { extractErrorMessage, isTimeoutError, isAlreadyExistsError, isNonFatalWaitError } from '../error-utils';
-import {
+import type {
   DocumentCreateTransition,
   BatchedTransition,
   BatchTransition,
@@ -15,6 +15,14 @@ import {
   PrivateKey,
   Identifier,
 } from '@dashevo/wasm-sdk';
+
+/**
+ * Get WASM classes from evo-sdk after WASM is initialized.
+ */
+async function getWasmClasses() {
+  const wasm = await import('@dashevo/evo-sdk') as unknown as typeof import('@dashevo/wasm-sdk');
+  return wasm;
+}
 
 
 export interface StateTransitionResult {
@@ -294,6 +302,7 @@ class StateTransitionService {
     try {
       const sdk = await getEvoSdk();
       const wasm = sdk.wasm;
+      const wasmClasses = await getWasmClasses();
       const privateKeyWif = await this.getPrivateKey(ownerId);
 
       logger.info(`Creating ${documentType} document with data:`, documentData);
@@ -338,13 +347,13 @@ class StateTransitionService {
         // Not confirmed yet — rebroadcast the same ST
         logger.info(`Rebroadcasting cached ST for ${documentId}...`);
         try {
-          const cachedST = StateTransition.fromBytes(cachedBytes);
+          const cachedST = wasmClasses.StateTransition.fromBytes(cachedBytes);
           // v3.1: Use StateTransitionsFacade instead of direct wasm access
           await sdk.stateTransitions.broadcastStateTransition(cachedST);
           const result = await sdk.stateTransitions.waitForResponse(cachedST);
           logger.info(`Rebroadcast succeeded for ${documentId}`, result);
           clearPendingSTBytes(documentId);
-          try { await wasm.refreshIdentityNonce(new Identifier(ownerId)); } catch { /* best effort */ }
+          try { await wasm.refreshIdentityNonce(new wasmClasses.Identifier(ownerId)); } catch { /* best effort */ }
           return {
             success: true,
             transactionHash: documentId,
@@ -395,15 +404,15 @@ class StateTransitionService {
       logger.info(`Nonce: current=${currentNonce}, sequence=${sequenceNumber}, using=${newNonce}`);
 
       // v3.1: DocumentCreateTransition takes an options object
-      const createTransition = new DocumentCreateTransition({
+      const createTransition = new wasmClasses.DocumentCreateTransition({
         document,
         identityContractNonce: newNonce,
       });
 
       // Wrap in a BatchTransition
       const docTransition = createTransition.toDocumentTransition();
-      const batched = new BatchedTransition(docTransition);
-      const batchTransition = BatchTransition.fromBatchedTransitions(
+      const batched = new wasmClasses.BatchedTransition(docTransition);
+      const batchTransition = wasmClasses.BatchTransition.fromBatchedTransitions(
         [batched],
         ownerId,
         0  // userFeeIncrease
@@ -416,7 +425,7 @@ class StateTransitionService {
       stateTransition.setIdentityContractNonce(newNonce);
 
       // Sign the state transition
-      const privateKey = PrivateKey.fromWIF(privateKeyWif);
+      const privateKey = wasmClasses.PrivateKey.fromWIF(privateKeyWif);
       stateTransition.sign(privateKey, identityKey);
       logger.info('StateTransition built and signed');
 
@@ -456,7 +465,7 @@ class StateTransitionService {
         // Without this, subsequent operations using the high-level API (e.g. delete)
         // would use a stale cached nonce.
         try {
-          await wasm.refreshIdentityNonce(new Identifier(ownerId));
+          await wasm.refreshIdentityNonce(new wasmClasses.Identifier(ownerId));
         } catch (refreshErr) {
           logger.warn('Failed to refresh nonce cache:', refreshErr);
         }
@@ -474,7 +483,7 @@ class StateTransitionService {
           }
           // Leave ST bytes cached for next retry — don't throw yet, return optimistic success
           // since broadcast succeeded and the ST is valid
-          try { await wasm.refreshIdentityNonce(new Identifier(ownerId)); } catch { /* best effort */ }
+          try { await wasm.refreshIdentityNonce(new wasmClasses.Identifier(ownerId)); } catch { /* best effort */ }
           return {
             success: true,
             transactionHash: documentId,
@@ -488,7 +497,7 @@ class StateTransitionService {
             logger.warn(`checkDocumentExists failed for ${documentId}:`, extractErrorMessage(checkErr));
           }
           clearPendingSTBytes(documentId);
-          try { await wasm.refreshIdentityNonce(new Identifier(ownerId)); } catch { /* best effort */ }
+          try { await wasm.refreshIdentityNonce(new wasmClasses.Identifier(ownerId)); } catch { /* best effort */ }
           return {
             success: true,
             transactionHash: documentId,
@@ -508,7 +517,7 @@ class StateTransitionService {
             clearPendingSTBytes(documentId);
             return { success: true, transactionHash: documentId, document: doc, confirmed: true };
           }
-          try { await wasm.refreshIdentityNonce(new Identifier(ownerId)); } catch { /* best effort */ }
+          try { await wasm.refreshIdentityNonce(new wasmClasses.Identifier(ownerId)); } catch { /* best effort */ }
           return {
             success: true,
             transactionHash: documentId,
