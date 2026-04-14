@@ -11,7 +11,6 @@
 import { getEvoSdk } from './evo-sdk-service';
 import type {
   IdentitySigner,
-  PrivateKey,
   IdentityPublicKey,
 } from '@dashevo/wasm-sdk';
 import type { IdentityPublicKey as IdentityPublicKeyType } from './identity-service';

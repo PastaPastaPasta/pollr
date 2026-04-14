@@ -7,14 +7,6 @@ import type { IdentityPublicKey } from '@dashevo/wasm-sdk';
 type WasmIdentityPublicKey = InstanceType<typeof IdentityPublicKey>;
 import { promptForAuthKey } from '../auth-utils';
 import { extractErrorMessage, isTimeoutError, isAlreadyExistsError, isNonFatalWaitError } from '../error-utils';
-import type {
-  DocumentCreateTransition,
-  BatchedTransition,
-  BatchTransition,
-  StateTransition,
-  PrivateKey,
-  Identifier,
-} from '@dashevo/wasm-sdk';
 
 /**
  * Get WASM classes from evo-sdk after WASM is initialized.

@@ -30,12 +30,17 @@ class VoteService extends BaseDocumentService<VoteDocument> {
     const pollOwnerId = (rawPollOwnerId ? identifierToBase58(rawPollOwnerId) : '') ?? '';
 
     // Decode selectedOptions from byte array (each byte = one option index)
+    // SDK may return as Uint8Array, number[], or base64 string
     const rawSelectedOptions = data.selectedOptions || doc.selectedOptions;
     let selectedOptions: number[] = [];
     if (rawSelectedOptions instanceof Uint8Array) {
       selectedOptions = Array.from(rawSelectedOptions);
     } else if (Array.isArray(rawSelectedOptions)) {
       selectedOptions = rawSelectedOptions.map(Number);
+    } else if (typeof rawSelectedOptions === 'string') {
+      try {
+        selectedOptions = Array.from(Uint8Array.from(atob(rawSelectedOptions), c => c.charCodeAt(0)));
+      } catch { /* not base64 */ }
     }
 
     return {

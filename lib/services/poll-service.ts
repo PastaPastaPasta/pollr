@@ -15,12 +15,22 @@ export interface PollDocument {
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-/** Decode a binary field (Uint8Array, number[], or string) to a UTF-8 string. */
+/** Decode a binary field (Uint8Array, number[], base64 string, or plain string) to a UTF-8 string. */
 function decodeBinaryField(raw: unknown): string {
   if (!raw) return '';
   if (raw instanceof Uint8Array) return textDecoder.decode(raw);
   if (Array.isArray(raw)) return textDecoder.decode(new Uint8Array(raw));
-  if (typeof raw === 'string') return raw;
+  if (typeof raw === 'string') {
+    // SDK returns byte array fields as base64-encoded strings
+    // Detect base64: if it doesn't look like valid JSON/UTF-8 content, try base64 decode
+    try {
+      const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+      return textDecoder.decode(bytes);
+    } catch {
+      // Not base64, return as-is
+      return raw;
+    }
+  }
   return '';
 }
 
