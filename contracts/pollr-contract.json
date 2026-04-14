@@ -115,12 +115,8 @@
         "minItems": 1,
         "maxItems": 10,
         "position": 2,
-        "description": "Array of selected option indices",
-        "items": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9
-        }
+        "byteArray": true,
+        "description": "Selected option indices as bytes (each byte = one option index 0-9)"
       }
     },
     "description": "A vote on a poll (unique per user per poll)",

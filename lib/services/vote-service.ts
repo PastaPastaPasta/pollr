@@ -29,11 +29,14 @@ class VoteService extends BaseDocumentService<VoteDocument> {
     const rawPollOwnerId = data.pollOwnerId || doc.pollOwnerId;
     const pollOwnerId = (rawPollOwnerId ? identifierToBase58(rawPollOwnerId) : '') ?? '';
 
-    // Extract selectedOptions array
+    // Decode selectedOptions from byte array (each byte = one option index)
     const rawSelectedOptions = data.selectedOptions || doc.selectedOptions;
-    const selectedOptions = Array.isArray(rawSelectedOptions)
-      ? rawSelectedOptions.map(Number)
-      : [];
+    let selectedOptions: number[] = [];
+    if (rawSelectedOptions instanceof Uint8Array) {
+      selectedOptions = Array.from(rawSelectedOptions);
+    } else if (Array.isArray(rawSelectedOptions)) {
+      selectedOptions = rawSelectedOptions.map(Number);
+    }
 
     return {
       $id: identifierToBase58(doc.$id || doc.id) || (doc.$id || doc.id) as string,
@@ -59,10 +62,11 @@ class VoteService extends BaseDocumentService<VoteDocument> {
       throw new Error('At least one option must be selected');
     }
 
+    // Encode selectedOptions as byte array (each byte = one option index)
     return this.create(ownerId, {
       pollId: stringToIdentifierBytes(pollId),
       pollOwnerId: stringToIdentifierBytes(pollOwnerId),
-      selectedOptions,
+      selectedOptions: Array.from(selectedOptions),
     });
   }
 
