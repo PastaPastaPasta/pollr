@@ -121,7 +121,8 @@ class EvoSdkService {
     // Fetch all contracts in parallel
     const results = await Promise.allSettled(
       contractsToFetch.map(async ({ id, name }) => {
-        const contract = await this.sdk!.contracts.fetch(id);
+        if (!this.sdk) throw new Error('SDK not initialized');
+        const contract = await this.sdk.contracts.fetch(id);
         if (!contract) {
           throw new Error(`Contract ${name} (${id}) not found on network`);
         }
