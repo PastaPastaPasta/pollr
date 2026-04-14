@@ -143,17 +143,13 @@ export function PollCard({
     </Card>
   )
 
-  if (isInteractive) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {cardContent}
-      </motion.div>
-    )
-  }
+  const content = isInteractive ? (
+    cardContent
+  ) : (
+    <Link href={`/poll?id=${poll.$id}`} className="block">
+      {cardContent}
+    </Link>
+  )
 
   return (
     <motion.div
@@ -161,9 +157,7 @@ export function PollCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Link href={`/poll?id=${poll.$id}`} className="block">
-        {cardContent}
-      </Link>
+      {content}
     </motion.div>
   )
 }
