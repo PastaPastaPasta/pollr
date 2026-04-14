@@ -1,23 +1,16 @@
 'use client'
 
 import { logger } from '@/lib/logger'
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { POLLR_CONTRACT_ID } from '@/lib/constants'
+import { POLLR_CONTRACT_ID, DEFAULT_NETWORK } from '@/lib/constants'
+import type { IdentityPublicKey } from '@/lib/services/identity-service'
 
 export interface AuthUser {
   identityId: string
   balance: number
   dpnsUsername?: string
-  publicKeys: Array<{
-    id: number
-    type: number
-    purpose: number
-    securityLevel: number
-    security_level?: number
-    disabledAt?: number
-    data?: string | Uint8Array
-  }>
+  publicKeys: IdentityPublicKey[]
 }
 
 interface AuthContextType {
@@ -129,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Initialize SDK if needed
       await evoSdkService.initialize({
-        network: (process.env.NEXT_PUBLIC_NETWORK as 'testnet' | 'mainnet') || 'testnet',
+        network: (process.env.NEXT_PUBLIC_NETWORK as 'testnet' | 'mainnet') || DEFAULT_NETWORK,
         contractId: POLLR_CONTRACT_ID
       })
 
@@ -218,24 +211,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.identityId])
 
+  // Stable ref so the interval always calls the latest refreshBalance
+  const refreshBalanceRef = useRef(refreshBalance)
+  refreshBalanceRef.current = refreshBalance
+
   // Periodic balance refresh (every 5 minutes when logged in)
   useEffect(() => {
     if (!user?.identityId) return
 
     const FIVE_MINUTES = 300000
-
-    const interval = setInterval(async () => {
-      try {
-        const { identityService } = await import('@/lib/services/identity-service')
-        identityService.clearCache(user.identityId)
-        const balance = await identityService.getBalance(user.identityId)
-        setUser(prev => prev ? { ...prev, balance: balance.confirmed } : prev)
-        updateSavedSession(data => {
-          (data.user as Record<string, unknown>).balance = balance.confirmed
-        })
-      } catch (err) {
-        logger.error('Failed to refresh balance:', err)
-      }
+    const interval = setInterval(() => {
+      refreshBalanceRef.current().catch(err => {
+        logger.error('Periodic balance refresh failed:', err)
+      })
     }, FIVE_MINUTES)
 
     return () => clearInterval(interval)
@@ -265,6 +253,14 @@ export function useAuth() {
   return context
 }
 
+function AuthLoadingSpinner(): JSX.Element {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100" />
+    </div>
+  )
+}
+
 // HOC for protecting routes - redirects to /login if not authenticated
 export function withAuth<P extends object>(
   Component: React.ComponentType<P>
@@ -282,22 +278,8 @@ export function withAuth<P extends object>(
       }
     }, [user, isAuthRestoring, router])
 
-    // Show loading while restoring auth
-    if (isAuthRestoring) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100" />
-        </div>
-      )
-    }
-
-    // Show loading while redirecting
-    if (!user) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100" />
-        </div>
-      )
+    if (isAuthRestoring || !user) {
+      return <AuthLoadingSpinner />
     }
 
     return <Component {...props} />
