@@ -15,13 +15,20 @@ import type { Document } from '@dashevo/wasm-sdk';
 
 /**
  * Ensure WASM module is initialized and return the Document class.
- * We dynamically import Document after WASM start() has been called
- * to avoid the "document_constructor is not a function" error.
+ *
+ * IMPORTANT: Document must come from @dashevo/evo-sdk (the bundled entry point)
+ * which includes WASM initialization and re-exports all wasm-sdk classes.
+ * Importing from @dashevo/wasm-sdk directly creates a separate module instance
+ * where start() was never called, causing "document_constructor is not a function".
  */
-async function getDocumentClass(): Promise<typeof import('@dashevo/wasm-sdk').Document> {
+async function getDocumentClass(): Promise<typeof Document> {
   await getEvoSdk();
-  const wasm = await import('@dashevo/wasm-sdk');
-  return wasm.Document;
+  // Dynamic import from evo-sdk to get Document with initialized WASM bindings.
+  // The evo-sdk bundle includes WASM init + re-exports all wasm-sdk symbols.
+  // Type assertion needed because evo-sdk's .d.ts doesn't declare Document,
+  // but the bundled JS does export it.
+  const evoSdk = await import('@dashevo/evo-sdk') as unknown as typeof import('@dashevo/wasm-sdk');
+  return evoSdk.Document;
 }
 
 class DocumentBuilderService {
