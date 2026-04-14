@@ -11,14 +11,17 @@
  * the WASM module is initialized before creating any Document objects.
  */
 import { getEvoSdk } from './evo-sdk-service';
-import { Document } from '@dashevo/wasm-sdk';
+import type { Document } from '@dashevo/wasm-sdk';
 
 /**
- * Ensure WASM module is initialized by connecting SDK
- * This guarantees the shared WASM module is ready before creating objects
+ * Ensure WASM module is initialized and return the Document class.
+ * We dynamically import Document after WASM start() has been called
+ * to avoid the "document_constructor is not a function" error.
  */
-async function ensureWasmReady(): Promise<void> {
+async function getDocumentClass(): Promise<typeof import('@dashevo/wasm-sdk').Document> {
   await getEvoSdk();
+  const wasm = await import('@dashevo/wasm-sdk');
+  return wasm.Document;
 }
 
 class DocumentBuilderService {
@@ -39,18 +42,15 @@ class DocumentBuilderService {
     documentTypeName: string,
     ownerId: string,
     data: Record<string, unknown>
-  ): Promise<InstanceType<typeof Document>> {
-    // Ensure WASM is initialized before creating objects
-    await ensureWasmReady();
+  ): Promise<Document> {
+    const DocumentClass = await getDocumentClass();
 
-    // v3.1: Document constructor takes a single DocumentOptions object
-    const document = new Document({
+    const document = new DocumentClass({
       properties: data,
       documentTypeName,
       dataContractId: contractId,
       ownerId,
       revision: BigInt(1),
-      // id omitted = auto-generated from entropy
     });
 
     return document;
@@ -77,12 +77,10 @@ class DocumentBuilderService {
     ownerId: string,
     data: Record<string, unknown>,
     newRevision: number
-  ): Promise<InstanceType<typeof Document>> {
-    // Ensure WASM is initialized before creating objects
-    await ensureWasmReady();
+  ): Promise<Document> {
+    const DocumentClass = await getDocumentClass();
 
-    // v3.1: Document constructor takes a single DocumentOptions object
-    const document = new Document({
+    const document = new DocumentClass({
       properties: data,
       documentTypeName,
       dataContractId: contractId,
