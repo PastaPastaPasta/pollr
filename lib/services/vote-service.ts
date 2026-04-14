@@ -67,11 +67,11 @@ class VoteService extends BaseDocumentService<VoteDocument> {
       throw new Error('At least one option must be selected');
     }
 
-    // Encode selectedOptions as byte array (each byte = one option index)
+    // Encode selectedOptions as Uint8Array (each byte = one option index)
     return this.create(ownerId, {
       pollId: stringToIdentifierBytes(pollId),
       pollOwnerId: stringToIdentifierBytes(pollOwnerId),
-      selectedOptions: Array.from(selectedOptions),
+      selectedOptions: new Uint8Array(selectedOptions),
     });
   }
 
