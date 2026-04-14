@@ -11,7 +11,7 @@
  * the WASM module is initialized before creating any Document objects.
  */
 import { getEvoSdk } from './evo-sdk-service';
-import { Document } from '@dashevo/evo-sdk';
+import { Document } from '@dashevo/wasm-sdk';
 
 /**
  * Ensure WASM module is initialized by connecting SDK

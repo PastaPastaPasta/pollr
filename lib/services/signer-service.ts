@@ -13,9 +13,10 @@ import {
   IdentitySigner,
   PrivateKey,
   IdentityPublicKey,
-} from '@dashevo/evo-sdk';
+} from '@dashevo/wasm-sdk';
 import type { IdentityPublicKey as IdentityPublicKeyType } from './identity-service';
-import type { IdentityPublicKey as WasmIdentityPublicKey } from '@dashevo/wasm-sdk/compressed';
+import { IdentityPublicKey as WasmIdentityPublicKeyClass } from '@dashevo/wasm-sdk';
+type WasmIdentityPublicKey = InstanceType<typeof WasmIdentityPublicKeyClass>;
 
 /**
  * Ensure WASM module is initialized by connecting SDK

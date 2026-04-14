@@ -3,7 +3,8 @@ import { getEvoSdk } from './evo-sdk-service';
 import { SecurityLevel, KeyPurpose, signerService } from './signer-service';
 import { documentBuilderService } from './document-builder-service';
 import { findMatchingKeyIndex, getSecurityLevelName, type IdentityPublicKeyInfo } from '@/lib/crypto/keys';
-import type { IdentityPublicKey as WasmIdentityPublicKey } from '@dashevo/wasm-sdk/compressed';
+import { IdentityPublicKey as WasmIdentityPublicKeyClass } from '@dashevo/wasm-sdk';
+type WasmIdentityPublicKey = InstanceType<typeof WasmIdentityPublicKeyClass>;
 import { promptForAuthKey } from '../auth-utils';
 import { extractErrorMessage, isTimeoutError, isAlreadyExistsError, isNonFatalWaitError } from '../error-utils';
 import {
@@ -13,7 +14,7 @@ import {
   StateTransition,
   PrivateKey,
   Identifier,
-} from '@dashevo/evo-sdk';
+} from '@dashevo/wasm-sdk';
 
 
 export interface StateTransitionResult {
@@ -197,7 +198,7 @@ class StateTransitionService {
 
     const keyInfos: IdentityPublicKeyInfo[] = wasmPublicKeys.map(key => {
       const dataHex = key.data;
-      const data = new Uint8Array(dataHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+      const data = new Uint8Array(dataHex.match(/.{1,2}/g)?.map((byte: string) => parseInt(byte, 16)) || []);
 
       return {
         id: key.keyId,
