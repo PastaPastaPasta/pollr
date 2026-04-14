@@ -1,5 +1,5 @@
 // Contract IDs
-export const POLLR_CONTRACT_ID = 'TODO_DEPLOY_CONTRACT' // Placeholder until contract is deployed
+export const POLLR_CONTRACT_ID = '7Xye3k1MuVYTpLuTnein5GLwR1NUjmt5gtLLp4pGhhRf' // Testnet
 export const DPNS_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec' // Testnet
 
 // App URL
