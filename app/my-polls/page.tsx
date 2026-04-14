@@ -1,15 +1,13 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PollCard } from '@/components/poll/poll-card'
 import { PollSkeleton } from '@/components/poll/poll-skeleton'
 import { useMyPolls } from '@/hooks/use-my-polls'
-import { useAuth } from '@/contexts/auth-context'
-import { withAuth } from '@/contexts/auth-context'
-import { Plus } from 'lucide-react'
+import { useAuth, withAuth } from '@/contexts/auth-context'
 
 function MyPollsPage() {
   const { user } = useAuth()

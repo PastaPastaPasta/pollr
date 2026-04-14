@@ -9,6 +9,64 @@ import { PollSkeleton } from '@/components/poll/poll-skeleton'
 import { usePolls } from '@/hooks/use-polls'
 import { useSdk } from '@/contexts/sdk-context'
 import { Spinner } from '@/components/ui/spinner'
+import type { PollDocument } from '@/lib/services/poll-service'
+
+interface PollListContentProps {
+  isReady: boolean
+  isLoading: boolean
+  polls: PollDocument[]
+}
+
+function PollListContent({ isReady, isLoading, polls }: PollListContentProps) {
+  if (!isReady) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+        <Spinner size="lg" />
+        <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <PollSkeleton />
+        <PollSkeleton />
+        <PollSkeleton />
+      </div>
+    )
+  }
+
+  if (polls.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-center py-16"
+      >
+        <BarChart3 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+        <p className="text-gray-500 dark:text-gray-400 mb-2">No polls yet</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">
+          Be the first to create one!
+        </p>
+      </motion.div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {polls.map((poll) => (
+        <PollCard
+          key={poll.$id}
+          poll={poll}
+          voteCounts={[]}
+          totalVotes={0}
+          isInteractive={false}
+        />
+      ))}
+    </div>
+  )
+}
 
 export default function HomePage() {
   const { isReady } = useSdk()
@@ -46,42 +104,7 @@ export default function HomePage() {
           </h2>
         </div>
 
-        {!isReady ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <Spinner size="lg" />
-            <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
-          </div>
-        ) : isLoading ? (
-          <div className="space-y-4">
-            <PollSkeleton />
-            <PollSkeleton />
-            <PollSkeleton />
-          </div>
-        ) : polls.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16"
-          >
-            <BarChart3 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 mb-2">No polls yet</p>
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              Be the first to create one!
-            </p>
-          </motion.div>
-        ) : (
-          <div className="space-y-4">
-            {polls.map((poll) => (
-              <PollCard
-                key={poll.$id}
-                poll={poll}
-                voteCounts={[]}
-                totalVotes={0}
-                isInteractive={false}
-              />
-            ))}
-          </div>
-        )}
+        <PollListContent isReady={isReady} isLoading={isLoading} polls={polls} />
       </div>
     </div>
   )

@@ -22,12 +22,6 @@ export function MobileBottomNav() {
     { href: '/my-polls', label: 'My Polls', icon: BarChart3 },
   ]
 
-  const handleProfileClick = () => {
-    if (!user) {
-      loginModal.open()
-    }
-  }
-
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 glass-effect glass-border md:hidden safe-area-inset-bottom">
       <div className="flex h-14 items-center justify-around">
@@ -68,7 +62,7 @@ export function MobileBottomNav() {
           <Link
             href="/my-polls"
             className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 ${
-              pathname === '/profile'
+              pathname === '/my-polls'
                 ? 'text-pollr-500'
                 : 'text-gray-500 dark:text-gray-400'
             }`}
@@ -78,7 +72,7 @@ export function MobileBottomNav() {
           </Link>
         ) : (
           <button
-            onClick={handleProfileClick}
+            onClick={loginModal.open}
             className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400"
           >
             <User className="h-5 w-5" />

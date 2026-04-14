@@ -15,6 +15,15 @@ export interface PollDocument {
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
+/** Decode a binary field (Uint8Array, number[], or string) to a UTF-8 string. */
+function decodeBinaryField(raw: unknown): string {
+  if (!raw) return '';
+  if (raw instanceof Uint8Array) return textDecoder.decode(raw);
+  if (Array.isArray(raw)) return textDecoder.decode(new Uint8Array(raw));
+  if (typeof raw === 'string') return raw;
+  return '';
+}
+
 class PollService extends BaseDocumentService<PollDocument> {
   constructor() {
     super('poll', POLLR_CONTRACT_ID);
@@ -23,36 +32,21 @@ class PollService extends BaseDocumentService<PollDocument> {
   protected transformDocument(doc: Record<string, unknown>): PollDocument {
     const data = (doc.data || doc) as Record<string, unknown>;
 
-    // Decode question from byte array
-    const rawQuestion = data.question || doc.question;
-    let question = '';
-    if (rawQuestion) {
-      if (rawQuestion instanceof Uint8Array) {
-        question = textDecoder.decode(rawQuestion);
-      } else if (Array.isArray(rawQuestion)) {
-        question = textDecoder.decode(new Uint8Array(rawQuestion));
-      } else if (typeof rawQuestion === 'string') {
-        question = rawQuestion;
-      }
-    }
+    const question = decodeBinaryField(data.question || doc.question);
 
-    // Decode options from byte array (JSON-encoded)
+    // Options are stored as a JSON-encoded byte array
     const rawOptions = data.options || doc.options;
     let options: string[] = [];
     if (rawOptions) {
       try {
-        if (rawOptions instanceof Uint8Array) {
-          options = JSON.parse(textDecoder.decode(rawOptions));
-        } else if (Array.isArray(rawOptions) && rawOptions.length > 0 && typeof rawOptions[0] === 'number') {
-          options = JSON.parse(textDecoder.decode(new Uint8Array(rawOptions)));
-        } else if (Array.isArray(rawOptions) && rawOptions.length > 0 && typeof rawOptions[0] === 'string') {
+        // Already a string array (no decoding needed)
+        if (Array.isArray(rawOptions) && rawOptions.length > 0 && typeof rawOptions[0] === 'string') {
           options = rawOptions as string[];
-        } else if (typeof rawOptions === 'string') {
-          options = JSON.parse(rawOptions);
+        } else {
+          options = JSON.parse(decodeBinaryField(rawOptions));
         }
       } catch (error) {
         logger.error('PollService: Failed to decode options:', error);
-        options = [];
       }
     }
 

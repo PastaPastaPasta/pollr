@@ -5,6 +5,7 @@ import { pollService, type PollDocument } from '@/lib/services/poll-service';
 import { voteService, type VoteDocument } from '@/lib/services/vote-service';
 import { useAuth } from '@/contexts/auth-context';
 import { logger } from '@/lib/logger';
+import { computeVoteCounts } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface UsePollResult {
@@ -31,19 +32,8 @@ export function usePoll(pollId: string | null): UsePollResult {
   const [error, setError] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
 
-  const computeVoteCounts = useCallback((allVotes: VoteDocument[], optionCount: number) => {
-    const counts = new Array(optionCount).fill(0) as number[];
-    let total = 0;
-
-    for (const vote of allVotes) {
-      total++;
-      for (const optionIndex of vote.selectedOptions) {
-        if (optionIndex >= 0 && optionIndex < optionCount) {
-          counts[optionIndex]++;
-        }
-      }
-    }
-
+  const updateVoteCounts = useCallback((allVotes: VoteDocument[], optionCount: number) => {
+    const { counts, total } = computeVoteCounts(allVotes, optionCount);
     setVoteCounts(counts);
     setTotalVotes(total);
   }, []);
@@ -58,7 +48,6 @@ export function usePoll(pollId: string | null): UsePollResult {
       setIsLoading(true);
       setError(null);
 
-      // Fetch poll and votes in parallel
       const [fetchedPoll, fetchedVotes] = await Promise.all([
         pollService.getPoll(pollId),
         voteService.getVotesForPoll(pollId),
@@ -72,7 +61,7 @@ export function usePoll(pollId: string | null): UsePollResult {
 
       setPoll(fetchedPoll);
       setVotes(fetchedVotes);
-      computeVoteCounts(fetchedVotes, fetchedPoll.options.length);
+      updateVoteCounts(fetchedVotes, fetchedPoll.options.length);
 
       // Check if current user has voted
       if (user) {
@@ -87,7 +76,7 @@ export function usePoll(pollId: string | null): UsePollResult {
     } finally {
       setIsLoading(false);
     }
-  }, [pollId, user, computeVoteCounts]);
+  }, [pollId, user, updateVoteCounts]);
 
   useEffect(() => {
     fetchData().catch((err) => {
@@ -112,7 +101,7 @@ export function usePoll(pollId: string | null): UsePollResult {
       // Optimistically update vote counts
       const newVotes = [...votes, newVote];
       setVotes(newVotes);
-      computeVoteCounts(newVotes, poll.options.length);
+      updateVoteCounts(newVotes, poll.options.length);
 
       toast.success('Vote submitted!');
       return true;
@@ -132,7 +121,7 @@ export function usePoll(pollId: string | null): UsePollResult {
     } finally {
       setIsVoting(false);
     }
-  }, [poll, user, votes, computeVoteCounts, fetchData]);
+  }, [poll, user, votes, updateVoteCounts, fetchData]);
 
   return {
     poll,

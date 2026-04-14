@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSdk } from '@/contexts/sdk-context'
 import { useLoginModal } from '@/hooks/use-login-modal'
 import toast from 'react-hot-toast'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 function PollPageContent() {
   const searchParams = useSearchParams()
@@ -23,6 +23,7 @@ function PollPageContent() {
   const { user } = useAuth()
   const { open: openLogin } = useLoginModal()
   const [pendingVote, setPendingVote] = useState<number[] | null>(null)
+  const submittingRef = useRef(false)
 
   const {
     poll,
@@ -37,7 +38,6 @@ function PollPageContent() {
 
   const handleVote = useCallback(async (selectedOptions: number[]) => {
     if (!user) {
-      // Save pending vote and prompt login
       setPendingVote(selectedOptions)
       openLogin()
       return
@@ -46,21 +46,14 @@ function PollPageContent() {
   }, [user, castVote, openLogin])
 
   // Auto-submit pending vote after login
-  const handleVoteAfterLogin = useCallback(async () => {
-    if (pendingVote && user) {
-      const success = await castVote(pendingVote)
-      if (success) {
-        setPendingVote(null)
-      }
-    }
+  useEffect(() => {
+    if (!pendingVote || !user || submittingRef.current) return
+    submittingRef.current = true
+    castVote(pendingVote)
+      .then((success) => { if (success) setPendingVote(null) })
+      .catch(() => setPendingVote(null))
+      .finally(() => { submittingRef.current = false })
   }, [pendingVote, user, castVote])
-
-  // Check for pending vote when user changes
-  if (pendingVote && user) {
-    handleVoteAfterLogin().catch(() => {
-      setPendingVote(null)
-    })
-  }
 
   const handleShare = useCallback(() => {
     const url = window.location.href
