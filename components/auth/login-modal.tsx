@@ -1,25 +1,107 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Switch from '@radix-ui/react-switch'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLoginModal } from '@/hooks/use-login-modal'
 import { useAuth } from '@/contexts/auth-context'
+import { useSdk } from '@/contexts/sdk-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { X } from 'lucide-react'
+import { truncateId } from '@/lib/utils'
+
+const IDENTITY_ID_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{42,46}$/
+
+function isLikelyIdentityId(input: string): boolean {
+  return IDENTITY_ID_PATTERN.test(input.trim())
+}
+
+interface ResolvedIdentity {
+  identityId: string
+  dpnsUsername: string | null
+}
 
 export function LoginModal() {
   const { isOpen, close } = useLoginModal()
   const { login } = useAuth()
+  const { isReady } = useSdk()
 
-  const [identityId, setIdentityId] = useState('')
+  const [identityInput, setIdentityInput] = useState('')
   const [privateKey, setPrivateKey] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLookingUp, setIsLookingUp] = useState(false)
+  const [resolvedIdentity, setResolvedIdentity] = useState<ResolvedIdentity | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    let cancelled = false
+    const trimmedInput = identityInput.trim()
+    if (!trimmedInput || !isReady) {
+      setResolvedIdentity(null)
+      setLookupError(null)
+      setIsLookingUp(false)
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsLookingUp(true)
+      setLookupError(null)
+      setResolvedIdentity(null)
+
+      try {
+        const { identityService } = await import('@/lib/services/identity-service')
+        const { dpnsService } = await import('@/lib/services/dpns-service')
+
+        let resolvedIdentityId = trimmedInput
+        if (!isLikelyIdentityId(trimmedInput)) {
+          const resolvedId = await dpnsService.resolveIdentity(trimmedInput)
+          if (cancelled) return
+          if (!resolvedId) {
+            setLookupError('DPNS username not found')
+            return
+          }
+          resolvedIdentityId = resolvedId
+        }
+
+        const identity = await identityService.getIdentity(resolvedIdentityId)
+        if (cancelled) return
+        if (!identity) {
+          setLookupError('Identity not found')
+          return
+        }
+
+        const dpnsUsername = await dpnsService.resolveUsername(identity.id)
+        if (cancelled) return
+        setResolvedIdentity({
+          identityId: identity.id,
+          dpnsUsername
+        })
+      } catch (lookupError) {
+        if (cancelled) return
+        setLookupError(
+          lookupError instanceof Error ? lookupError.message : 'Failed to look up identity'
+        )
+      } finally {
+        if (!cancelled) {
+          setIsLookingUp(false)
+        }
+      }
+    }, 350)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+    }
+  }, [identityInput, isOpen, isReady])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,11 +109,13 @@ export function LoginModal() {
     setIsLoading(true)
 
     try {
-      await login(identityId.trim(), privateKey.trim(), { rememberMe })
+      await login(identityInput.trim(), privateKey.trim(), { rememberMe })
       // Reset form on success
-      setIdentityId('')
+      setIdentityInput('')
       setPrivateKey('')
       setRememberMe(false)
+      setResolvedIdentity(null)
+      setLookupError(null)
       close()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to login')
@@ -45,8 +129,24 @@ export function LoginModal() {
       close()
       // Reset error when closing
       setError(null)
+      setLookupError(null)
+      setResolvedIdentity(null)
+      setIdentityInput('')
+      setPrivateKey('')
+      setRememberMe(false)
+      setIsLookingUp(false)
     }
   }
+
+  const canSubmit = Boolean(
+    isReady &&
+    resolvedIdentity &&
+    identityInput.trim() &&
+    privateKey.trim() &&
+    !isLoading &&
+    !isLookingUp &&
+    !lookupError
+  )
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -82,27 +182,46 @@ export function LoginModal() {
                       Login to Pollr
                     </Dialog.Title>
                     <Dialog.Description className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Enter your Dash Platform credentials to continue.
+                      Enter your Dash identity ID or DPNS username and your private key.
                     </Dialog.Description>
 
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                      {/* Identity ID */}
+                      {!isReady && (
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-300">
+                          Connecting to Dash Platform...
+                        </div>
+                      )}
+
+                      {/* Identity input */}
                       <div className="space-y-2">
                         <label
                           htmlFor="identity-id"
                           className="text-sm font-medium text-gray-700 dark:text-gray-300"
                         >
-                          Identity ID
+                          Identity ID or DPNS Username
                         </label>
                         <Input
                           id="identity-id"
                           type="text"
-                          placeholder="Enter your Identity ID"
-                          value={identityId}
-                          onChange={(e) => setIdentityId(e.target.value)}
-                          disabled={isLoading}
+                          placeholder="Enter your identity ID or name.dash"
+                          value={identityInput}
+                          onChange={(e) => setIdentityInput(e.target.value)}
+                          disabled={isLoading || !isReady}
                           required
                         />
+                        {isLookingUp && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Resolving identity...
+                          </p>
+                        )}
+                        {!isLookingUp && resolvedIdentity && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Signing in as {resolvedIdentity.dpnsUsername || truncateId(resolvedIdentity.identityId)}
+                          </p>
+                        )}
+                        {!isLookingUp && lookupError && (
+                          <p className="text-xs text-red-500">{lookupError}</p>
+                        )}
                       </div>
 
                       {/* Private Key */}
@@ -119,7 +238,7 @@ export function LoginModal() {
                           placeholder="Enter your private key (WIF)"
                           value={privateKey}
                           onChange={(e) => setPrivateKey(e.target.value)}
-                          disabled={isLoading}
+                          disabled={isLoading || !isReady}
                           required
                         />
                       </div>
@@ -136,7 +255,7 @@ export function LoginModal() {
                           id="remember-me"
                           checked={rememberMe}
                           onCheckedChange={setRememberMe}
-                          disabled={isLoading}
+                          disabled={isLoading || !isReady}
                           className="relative h-6 w-11 cursor-pointer rounded-full bg-gray-200 transition-colors data-[state=checked]:bg-pollr-500 dark:bg-gray-700"
                         >
                           <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
@@ -152,7 +271,7 @@ export function LoginModal() {
                       <Button
                         type="submit"
                         className="w-full bg-gradient-pollr hover:opacity-90"
-                        disabled={isLoading || !identityId.trim() || !privateKey.trim()}
+                        disabled={!canSubmit}
                       >
                         {isLoading ? (
                           <span className="flex items-center gap-2">

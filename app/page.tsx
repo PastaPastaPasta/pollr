@@ -9,12 +9,12 @@ import { PollSkeleton } from '@/components/poll/poll-skeleton'
 import { usePolls } from '@/hooks/use-polls'
 import { useSdk } from '@/contexts/sdk-context'
 import { Spinner } from '@/components/ui/spinner'
-import type { PollDocument } from '@/lib/services/poll-service'
+import type { EnrichedPoll } from '@/lib/services/poll-metadata-service'
 
 interface PollListContentProps {
   isReady: boolean
   isLoading: boolean
-  polls: PollDocument[]
+  polls: EnrichedPoll[]
   error: string | null
 }
 
@@ -67,10 +67,11 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
     <div className="space-y-4">
       {polls.map((poll) => (
         <PollCard
-          key={poll.$id}
-          poll={poll}
-          voteCounts={[]}
-          totalVotes={0}
+          key={poll.poll.$id}
+          poll={poll.poll}
+          ownerUsername={poll.ownerUsername}
+          voteCounts={poll.voteCounts}
+          totalVotes={poll.totalVotes}
           isInteractive={false}
         />
       ))}

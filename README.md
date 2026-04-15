@@ -6,7 +6,7 @@ Decentralized polling app built on [Dash Platform](https://dashplatform.readme.i
 
 - Create single-choice or multiple-choice polls
 - Vote on polls with your Dash Platform identity
-- View real-time results (always visible)
+- View poll results directly on list pages and individual poll pages
 - Double-vote prevention via on-chain unique index
 - Dark mode support
 - Mobile responsive
@@ -34,6 +34,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Building
 
 ```bash
+npx tsc --noEmit  # Type-checks cleanly before a build
 npm run build      # Build for root deployment
 npm run build:subpath  # Build for /pollr subpath
 ```

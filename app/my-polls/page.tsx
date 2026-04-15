@@ -53,10 +53,11 @@ function MyPollsPage() {
         <div className="space-y-4">
           {polls.map((poll) => (
             <PollCard
-              key={poll.$id}
-              poll={poll}
-              voteCounts={[]}
-              totalVotes={0}
+              key={poll.poll.$id}
+              poll={poll.poll}
+              ownerUsername={poll.ownerUsername}
+              voteCounts={poll.voteCounts}
+              totalVotes={poll.totalVotes}
               isInteractive={false}
             />
           ))}

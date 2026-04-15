@@ -8,19 +8,19 @@ import { useLoginModal } from '@/hooks/use-login-modal'
 import { Spinner } from '@/components/ui/spinner'
 
 export default function LoginPage() {
-  const { user, isLoading } = useAuth()
+  const { user, isAuthRestoring } = useAuth()
   const router = useRouter()
   const { open: openLogin } = useLoginModal()
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isAuthRestoring && user) {
       router.push('/')
-    } else if (!isLoading && !user) {
+    } else if (!isAuthRestoring && !user) {
       openLogin()
     }
-  }, [user, isLoading, router, openLogin])
+  }, [user, isAuthRestoring, router, openLogin])
 
-  if (isLoading) {
+  if (isAuthRestoring) {
     return (
       <div className="flex items-center justify-center py-32">
         <Spinner size="lg" />

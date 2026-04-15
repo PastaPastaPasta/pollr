@@ -27,6 +27,7 @@ function PollPageContent() {
 
   const {
     poll,
+    ownerUsername,
     voteCounts,
     totalVotes,
     userVote,
@@ -127,6 +128,7 @@ function PollPageContent() {
       {/* Poll */}
       <PollCard
         poll={poll}
+        ownerUsername={ownerUsername}
         voteCounts={voteCounts}
         totalVotes={totalVotes}
         userVote={userVote}

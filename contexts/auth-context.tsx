@@ -5,6 +5,16 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { useRouter } from 'next/navigation'
 import { POLLR_CONTRACT_ID, DEFAULT_NETWORK } from '@/lib/constants'
 import type { IdentityPublicKey } from '@/lib/services/identity-service'
+import {
+  findMatchingKeyIndex,
+  getPurposeName,
+  getSecurityLevelName,
+  isPurposeAllowedForLogin,
+  isSecurityLevelAllowedForLogin,
+  type IdentityPublicKeyInfo,
+} from '@/lib/crypto/keys'
+import { validateWifNetwork, wifToPrivateKey, type DecodedWif } from '@/lib/crypto/wif'
+import { normalizeBytes } from '@/lib/services/sdk-helpers'
 
 export interface AuthUser {
   identityId: string
@@ -18,7 +28,7 @@ interface AuthContextType {
   isLoading: boolean
   isAuthRestoring: boolean
   error: string | null
-  login: (identityId: string, privateKey: string, options?: { rememberMe?: boolean }) => Promise<void>
+  login: (identityOrUsername: string, privateKey: string, options?: { rememberMe?: boolean }) => Promise<void>
   logout: () => Promise<void>
   updateDPNSUsername: (username: string) => void
   refreshBalance: () => Promise<void>
@@ -27,6 +37,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const SESSION_KEY = 'pollr_session'
+const IDENTITY_ID_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{42,46}$/
+
+function isLikelyIdentityId(input: string): boolean {
+  return IDENTITY_ID_PATTERN.test(input.trim())
+}
+
+function toLoginPublicKeys(publicKeys: IdentityPublicKey[]): IdentityPublicKeyInfo[] {
+  return publicKeys.flatMap((key) => {
+    const normalizedData = normalizeBytes(key.data)
+
+    if (!normalizedData) {
+      logger.warn(`Auth: Skipping public key ${key.id} because its data could not be normalized`)
+      return []
+    }
+
+    return [{
+      id: key.id,
+      type: key.type,
+      purpose: key.purpose,
+      securityLevel: key.securityLevel,
+      data: normalizedData
+    }]
+  })
+}
 
 // Helper to update a field in the saved session
 function updateSavedSession(updater: (sessionData: Record<string, unknown>) => void): void {
@@ -104,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = useCallback(async (
-    identityId: string,
+    identityOrUsername: string,
     privateKey: string,
     options: { rememberMe?: boolean } = {}
   ) => {
@@ -113,28 +147,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
-      if (!identityId || !privateKey) {
-        throw new Error('Identity ID and private key are required')
+      const trimmedIdentity = identityOrUsername.trim()
+      const trimmedPrivateKey = privateKey.trim()
+      const network = (process.env.NEXT_PUBLIC_NETWORK as 'testnet' | 'mainnet') || DEFAULT_NETWORK
+
+      if (!trimmedIdentity || !trimmedPrivateKey) {
+        throw new Error('Identity ID or DPNS username and private key are required')
       }
 
       const { identityService } = await import('@/lib/services/identity-service')
       const { evoSdkService } = await import('@/lib/services/evo-sdk-service')
+      const { dpnsService } = await import('@/lib/services/dpns-service')
 
       // Initialize SDK if needed
       await evoSdkService.initialize({
-        network: (process.env.NEXT_PUBLIC_NETWORK as 'testnet' | 'mainnet') || DEFAULT_NETWORK,
+        network,
         contractId: POLLR_CONTRACT_ID
       })
 
+      let resolvedIdentityId = trimmedIdentity
+      if (!isLikelyIdentityId(trimmedIdentity)) {
+        const resolved = await dpnsService.resolveIdentity(trimmedIdentity)
+        if (!resolved) {
+          throw new Error('DPNS username not found')
+        }
+        resolvedIdentityId = resolved
+      }
+
       logger.info('Fetching identity with EvoSDK...')
-      const identityData = await identityService.getIdentity(identityId)
+      const identityData = await identityService.getIdentity(resolvedIdentityId)
 
       if (!identityData) {
         throw new Error('Identity not found')
       }
 
-      // Resolve DPNS username
-      const { dpnsService } = await import('@/lib/services/dpns-service')
+      let decodedPrivateKey: DecodedWif
+      try {
+        decodedPrivateKey = wifToPrivateKey(trimmedPrivateKey)
+      } catch {
+        throw new Error('Invalid private key format')
+      }
+
+      if (!validateWifNetwork(decodedPrivateKey.prefix, network)) {
+        throw new Error(`This private key is for a different network (${network} expected)`)
+      }
+
+      const publicKeys = toLoginPublicKeys(identityData.publicKeys)
+      const matchingKey = findMatchingKeyIndex(trimmedPrivateKey, publicKeys, network)
+
+      if (!matchingKey) {
+        throw new Error('This private key does not belong to the selected identity')
+      }
+
+      if (!isPurposeAllowedForLogin(matchingKey.purpose)) {
+        throw new Error(
+          `This key cannot be used for authentication (it's a ${getPurposeName(matchingKey.purpose)} key)`
+        )
+      }
+
+      if (!isSecurityLevelAllowedForLogin(matchingKey.securityLevel)) {
+        if (matchingKey.securityLevel === 0) {
+          throw new Error('This is your MASTER key. Use a HIGH or CRITICAL authentication key instead.')
+        }
+
+        throw new Error(
+          `This key's security level is not allowed for login (${getSecurityLevelName(matchingKey.securityLevel)})`
+        )
+      }
+
       const dpnsUsername = await dpnsService.resolveUsername(identityData.id)
 
       const authUser: AuthUser = {
@@ -156,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Store private key with remember-me preference
       const { storePrivateKey, setRememberMe } = await import('@/lib/secure-storage')
       setRememberMe(rememberMe)
-      storePrivateKey(identityId, privateKey)
+      storePrivateKey(identityData.id, trimmedPrivateKey)
 
       setUser(authUser)
 

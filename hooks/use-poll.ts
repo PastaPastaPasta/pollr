@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { pollService, type PollDocument } from '@/lib/services/poll-service';
 import { voteService, type VoteDocument } from '@/lib/services/vote-service';
 import { useAuth } from '@/contexts/auth-context';
+import { useSdk } from '@/contexts/sdk-context';
 import { logger } from '@/lib/logger';
 import { computeVoteCounts } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface UsePollResult {
   poll: PollDocument | null;
+  ownerUsername: string | null;
   votes: VoteDocument[];
   voteCounts: number[];
   totalVotes: number;
@@ -23,7 +25,9 @@ interface UsePollResult {
 
 export function usePoll(pollId: string | null): UsePollResult {
   const { user } = useAuth();
+  const { isReady } = useSdk();
   const [poll, setPoll] = useState<PollDocument | null>(null);
+  const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
   const [votes, setVotes] = useState<VoteDocument[]>([]);
   const [voteCounts, setVoteCounts] = useState<number[]>([]);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -39,7 +43,18 @@ export function usePoll(pollId: string | null): UsePollResult {
   }, []);
 
   const fetchData = useCallback(async () => {
+    if (!isReady) {
+      return;
+    }
+
     if (!pollId) {
+      setPoll(null);
+      setOwnerUsername(null);
+      setVotes([]);
+      setVoteCounts([]);
+      setTotalVotes(0);
+      setUserVote(null);
+      setError(null);
       setIsLoading(false);
       return;
     }
@@ -48,6 +63,7 @@ export function usePoll(pollId: string | null): UsePollResult {
       setIsLoading(true);
       setError(null);
 
+      const { dpnsService } = await import('@/lib/services/dpns-service');
       const [fetchedPoll, fetchedVotes] = await Promise.all([
         pollService.getPoll(pollId),
         voteService.getVotesForPoll(pollId),
@@ -56,10 +72,16 @@ export function usePoll(pollId: string | null): UsePollResult {
       if (!fetchedPoll) {
         setError('Poll not found');
         setPoll(null);
+        setOwnerUsername(null);
+        setVotes([]);
+        setVoteCounts([]);
+        setTotalVotes(0);
+        setUserVote(null);
         return;
       }
 
       setPoll(fetchedPoll);
+      setOwnerUsername(await dpnsService.resolveUsername(fetchedPoll.$ownerId));
       setVotes(fetchedVotes);
       updateVoteCounts(fetchedVotes, fetchedPoll.options.length);
 
@@ -72,17 +94,24 @@ export function usePoll(pollId: string | null): UsePollResult {
       }
     } catch (err) {
       logger.error('Error fetching poll data:', err);
+      setPoll(null);
+      setOwnerUsername(null);
       setError('Failed to load poll');
     } finally {
       setIsLoading(false);
     }
-  }, [pollId, user, updateVoteCounts]);
+  }, [isReady, pollId, user, updateVoteCounts]);
 
   useEffect(() => {
+    if (!isReady) {
+      setIsLoading(true);
+      return;
+    }
+
     fetchData().catch((err) => {
       logger.error('Error in usePoll effect:', err);
     });
-  }, [fetchData]);
+  }, [fetchData, isReady]);
 
   const castVote = useCallback(async (selectedOptions: number[]): Promise<boolean> => {
     if (!poll || !user) return false;
@@ -125,6 +154,7 @@ export function usePoll(pollId: string | null): UsePollResult {
 
   return {
     poll,
+    ownerUsername,
     votes,
     voteCounts,
     totalVotes,
