@@ -94,8 +94,10 @@ class PollService extends BaseDocumentService<PollDocument> {
       throw new Error('All options must be non-empty');
     }
 
-    const questionBytes = Array.from(textEncoder.encode(question.trim()));
-    const optionsBytes = Array.from(textEncoder.encode(JSON.stringify(options.map(o => o.trim()))));
+    // byteArray fields MUST be Uint8Array for the WASM serialization layer
+    // to produce Value::Bytes (number[] produces Value::Array which platform rejects)
+    const questionBytes = textEncoder.encode(question.trim());
+    const optionsBytes = textEncoder.encode(JSON.stringify(options.map(o => o.trim())));
 
     const documentData: Record<string, unknown> = {
       question: questionBytes,
