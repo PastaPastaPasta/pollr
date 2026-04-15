@@ -31,17 +31,19 @@ class VoteService extends BaseDocumentService<VoteDocument> {
 
     // Decode selectedOptions from byte array (each byte = one option index)
     // SDK may return as Uint8Array, number[], or base64 string
+    // Strip 0xFF padding bytes added during creation (see castVote workaround)
     const rawSelectedOptions = data.selectedOptions || doc.selectedOptions;
-    let selectedOptions: number[] = [];
+    let rawBytes: number[] = [];
     if (rawSelectedOptions instanceof Uint8Array) {
-      selectedOptions = Array.from(rawSelectedOptions);
+      rawBytes = Array.from(rawSelectedOptions);
     } else if (Array.isArray(rawSelectedOptions)) {
-      selectedOptions = rawSelectedOptions.map(Number);
+      rawBytes = rawSelectedOptions.map(Number);
     } else if (typeof rawSelectedOptions === 'string') {
       try {
-        selectedOptions = Array.from(Uint8Array.from(atob(rawSelectedOptions), c => c.charCodeAt(0)));
+        rawBytes = Array.from(Uint8Array.from(atob(rawSelectedOptions), c => c.charCodeAt(0)));
       } catch { /* not base64 */ }
     }
+    const selectedOptions = rawBytes.filter(b => b !== 0xFF);
 
     return {
       $id: identifierToBase58(doc.$id || doc.id) || (doc.$id || doc.id) as string,
@@ -67,12 +69,19 @@ class VoteService extends BaseDocumentService<VoteDocument> {
       throw new Error('At least one option must be selected');
     }
 
-    // byteArray fields MUST be Uint8Array — the WASM serialization layer
-    // converts Uint8Array → Value::Bytes but number[] → Value::Array (rejected by platform)
+    // WORKAROUND: Platform's JsonValue→Value conversion uses a heuristic that
+    // only treats arrays as bytes if they have >= 10 elements (see rs-platform-value
+    // converter/serde_json.rs line 225: "if len >= 10"). Pad to 10 bytes with 0xFF
+    // (value 255, which is never a valid option index 0-9) so the array is recognized
+    // as bytes rather than Value::Array.
+    const padded = new Array(10).fill(0xFF) as number[];
+    for (let i = 0; i < selectedOptions.length; i++) {
+      padded[i] = selectedOptions[i] & 0xFF;
+    }
     return this.create(ownerId, {
       pollId: stringToIdentifierBytes(pollId),
       pollOwnerId: stringToIdentifierBytes(pollOwnerId),
-      selectedOptions: new Uint8Array(selectedOptions),
+      selectedOptions: padded,
     });
   }
 
