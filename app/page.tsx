@@ -46,10 +46,12 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
         selectedOptions
       )
       setUserVote(newVote)
-      // Optimistic update
-      const newCounts = [...voteCounts]
-      selectedOptions.forEach(i => { newCounts[i] = (newCounts[i] || 0) + 1 })
-      setVoteCounts(newCounts)
+      // Optimistic update using functional updaters to avoid stale closure
+      setVoteCounts(prev => {
+        const updated = [...prev]
+        selectedOptions.forEach(i => { updated[i] = (updated[i] || 0) + 1 })
+        return updated
+      })
       setTotalVotes(prev => prev + 1)
       toast.success('Vote submitted!')
     } catch (err) {
@@ -63,7 +65,7 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
     } finally {
       setIsVoting(false)
     }
-  }, [user, enrichedPoll.poll, voteCounts])
+  }, [user, enrichedPoll.poll])
 
   // Auto-submit pending vote after login
   useEffect(() => {
