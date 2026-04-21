@@ -2,23 +2,18 @@ import { logger } from '@/lib/logger'
 import { computeVoteCounts } from '@/lib/utils'
 import { dpnsService } from './dpns-service'
 import type { PollDocument } from './poll-service'
-import { voteService } from './vote-service'
-
-export interface PollDisplayMetadata {
-  ownerUsername: string | null
-  voteCounts: number[]
-  totalVotes: number
-}
+import { voteService, type VoteDocument } from './vote-service'
 
 export interface EnrichedPoll {
   poll: PollDocument
   ownerUsername: string | null
   voteCounts: number[]
   totalVotes: number
+  userVote?: VoteDocument | null
 }
 
 class PollMetadataService {
-  async enrichPolls(polls: PollDocument[]): Promise<EnrichedPoll[]> {
+  async enrichPolls(polls: PollDocument[], userId?: string | null): Promise<EnrichedPoll[]> {
     if (polls.length === 0) {
       return []
     }
@@ -32,33 +27,37 @@ class PollMetadataService {
           try {
             const votes = await voteService.getVotesForPoll(poll.$id)
             const { counts, total } = computeVoteCounts(votes, poll.options.length)
+            const userVote = userId ? (votes.find(v => v.$ownerId === userId) ?? null) : null
 
-            return [poll.$id, { voteCounts: counts, totalVotes: total }] as const
+            return [poll.$id, { voteCounts: counts, totalVotes: total, userVote }] as const
           } catch (error) {
             logger.error(`PollMetadata: Failed to fetch vote totals for poll ${poll.$id}:`, error)
 
             return [poll.$id, {
               voteCounts: new Array(poll.options.length).fill(0),
-              totalVotes: 0
+              totalVotes: 0,
+              userVote: null as VoteDocument | null
             }] as const
           }
         })
       )
     ])
 
-    const voteMetadataMap = new Map<string, Omit<PollDisplayMetadata, 'ownerUsername'>>(voteMetadata)
+    const voteMetadataMap = new Map(voteMetadata)
 
     return polls.map((poll) => {
       const metadata = voteMetadataMap.get(poll.$id) ?? {
         voteCounts: new Array(poll.options.length).fill(0),
-        totalVotes: 0
+        totalVotes: 0,
+        userVote: null
       }
 
       return {
         poll,
         ownerUsername: ownerUsernames.get(poll.$ownerId) ?? null,
         voteCounts: metadata.voteCounts,
-        totalVotes: metadata.totalVotes
+        totalVotes: metadata.totalVotes,
+        userVote: metadata.userVote
       }
     })
   }

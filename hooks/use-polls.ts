@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { pollService } from '@/lib/services/poll-service';
 import { pollMetadataService, type EnrichedPoll } from '@/lib/services/poll-metadata-service';
 import { useSdk } from '@/contexts/sdk-context';
+import { useAuth } from '@/contexts/auth-context';
 import { logger } from '@/lib/logger';
 
 interface UsePollsResult {
@@ -15,6 +16,7 @@ interface UsePollsResult {
 
 export function usePolls(limit = 20): UsePollsResult {
   const { isReady } = useSdk();
+  const { user } = useAuth();
   const [polls, setPolls] = useState<EnrichedPoll[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function usePolls(limit = 20): UsePollsResult {
       setIsLoading(true);
       setError(null);
       const result = await pollService.getRecentPolls(limit);
-      const enrichedPolls = await pollMetadataService.enrichPolls(result);
+      const enrichedPolls = await pollMetadataService.enrichPolls(result, user?.identityId);
       setPolls(enrichedPolls);
     } catch (err) {
       logger.error('Error fetching polls:', err);
@@ -36,7 +38,7 @@ export function usePolls(limit = 20): UsePollsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [isReady, limit]);
+  }, [isReady, limit, user?.identityId]);
 
   useEffect(() => {
     if (!isReady) {
