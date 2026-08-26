@@ -42,11 +42,28 @@ class PollService extends BaseDocumentService<PollDocument> {
     const data = (doc.data || doc) as Record<string, unknown>;
 
     // Options live in enumerated `option0`..`option9` fields; the first gap ends the list.
+    const readOption = (index: number): unknown => data[optionField(index)] ?? doc[optionField(index)];
+
     const options: string[] = [];
     for (let index = 0; index < MAX_POLL_OPTIONS; index++) {
-      const raw = data[optionField(index)] ?? doc[optionField(index)];
+      const raw = readOption(index);
       if (typeof raw !== 'string') break;
       options.push(raw);
+    }
+
+    // A gap makes every later option unreachable. Nothing this app writes produces one, so say
+    // so rather than truncating a poll's choices silently.
+    if (options.length < MAX_POLL_OPTIONS) {
+      const orphaned: number[] = [];
+      for (let index = options.length + 1; index < MAX_POLL_OPTIONS; index++) {
+        if (typeof readOption(index) === 'string') orphaned.push(index);
+      }
+      if (orphaned.length > 0) {
+        logger.warn(
+          `PollService: Poll ${String(doc.$id ?? doc.id)} has no option${options.length} but does have ` +
+          `option${orphaned.join(', option')}; ignoring everything past the gap`
+        );
+      }
     }
 
     const question = data.question ?? doc.question;

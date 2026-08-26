@@ -1,7 +1,9 @@
 import { logger } from '@/lib/logger';
 import { extractErrorMessage } from '@/lib/error-utils';
+import { isPollClosed } from '@/lib/utils';
 import { BaseDocumentService } from './document-service';
 import { getEvoSdk } from './evo-sdk-service';
+import { stateTransitionService } from './state-transition-service';
 import {
   identifierStringToDocumentBytes,
   identifierToBase58,
@@ -22,10 +24,12 @@ export interface VoteDocument {
 }
 
 export interface CastVoteResult {
-  /** Every choice recorded on-chain for this voter after the call, ascending. */
+  /** Every choice recorded on-chain for this voter after the call, ascending. Excludes `failed`. */
   choices: number[];
   /** Choices Platform rejected as duplicates, i.e. already voted before this call. */
   alreadyVoted: number[];
+  /** Choices that could not be recorded. The rest of the ballot still landed. */
+  failed: number[];
 }
 
 export interface VoteTally {
@@ -60,7 +64,9 @@ export function applyCastVoteResult(tally: PollTally, result: CastVoteResult): P
   return {
     voteCounts,
     totalVotes: tally.totalVotes + recorded.length,
-    userChoices: result.choices,
+    // Merge rather than replace: a returning multi-choice voter's ballot carries only the
+    // choices they just added, not the ones already on-chain from an earlier visit.
+    userChoices: Array.from(new Set([...tally.userChoices, ...result.choices])).sort((a, b) => a - b),
   };
 }
 
@@ -70,15 +76,30 @@ export function applyCastVoteResult(tally: PollTally, result: CastVoteResult): P
  */
 const CHOICE_VALUE_TAG = 0x80;
 
-/** Every choice the contract permits — the `in` operand for the grouped tally query. */
-const ALL_CHOICES = Array.from({ length: MAX_POLL_OPTIONS }, (_, index) => index);
+/**
+ * Best-effort raw text for an error value.
+ *
+ * `extractErrorMessage` truncates stringified error objects to 200 characters, which can cut off
+ * the marker Platform buries deep in a nested rejection, so the raw forms are searched too.
+ */
+function rawErrorText(error: unknown): string {
+  const parts = [String(error)];
+  try {
+    const json = JSON.stringify(error);
+    if (json) parts.push(json);
+  } catch {
+    // Circular or non-serializable — the String() form above still stands.
+  }
+  return parts.join(' ');
+}
 
 /**
  * A vote that collides with the `voterChoice` unique index is not a failure: the voter had
  * already recorded that choice, so the caller should show results rather than an error.
  */
 export function isDuplicateVoteError(error: unknown): boolean {
-  return extractErrorMessage(error).toLowerCase().includes('duplicate unique properties');
+  const haystack = `${rawErrorText(error)} ${extractErrorMessage(error)}`.toLowerCase();
+  return haystack.includes('duplicate unique');
 }
 
 /**
@@ -126,12 +147,20 @@ class VoteService extends BaseDocumentService<VoteDocument> {
    * one document transition, so multi-choice ballots are broadcast as sequential creates.
    * The `voterChoice` unique index prevents double-voting; a duplicate rejection is reported
    * through `alreadyVoted` instead of throwing.
+   *
+   * One bad choice never abandons the rest of the ballot: a failing create is retried once
+   * behind a nonce refresh, and only then recorded in `failed`. The call throws solely when
+   * every requested choice failed, so the caller always learns what did land.
+   *
+   * `endsAt` is the poll's advisory close time. Platform does not enforce it, so the client
+   * refuses the write once it has passed.
    */
   async castVote(
     ownerId: string,
     pollId: string,
     pollOwnerId: string,
-    choices: number[]
+    choices: number[],
+    endsAt?: number
   ): Promise<CastVoteResult> {
     const requested = Array.from(new Set(choices)).sort((a, b) => a - b);
 
@@ -141,28 +170,70 @@ class VoteService extends BaseDocumentService<VoteDocument> {
     if (requested.some(choice => !Number.isInteger(choice) || choice < 0 || choice >= MAX_POLL_OPTIONS)) {
       throw new Error('Selected option is out of range');
     }
+    if (isPollClosed({ endsAt })) {
+      throw new Error('This poll is closed');
+    }
 
     const pollIdBytes = identifierStringToDocumentBytes(pollId);
     const pollOwnerIdBytes = identifierStringToDocumentBytes(pollOwnerId);
+    const createVote = (choice: number) => this.create(ownerId, {
+      pollId: pollIdBytes,
+      pollOwnerId: pollOwnerIdBytes,
+      choice,
+    });
+
+    const recorded: number[] = [];
     const alreadyVoted: number[] = [];
+    const failed: number[] = [];
+    let lastError: unknown = null;
 
     for (const choice of requested) {
       try {
-        await this.create(ownerId, {
-          pollId: pollIdBytes,
-          pollOwnerId: pollOwnerIdBytes,
-          choice,
-        });
+        await createVote(choice);
+        recorded.push(choice);
+        continue;
       } catch (error) {
-        if (!isDuplicateVoteError(error)) {
-          throw error;
+        if (isDuplicateVoteError(error)) {
+          logger.info(`VoteService: Choice ${choice} on poll ${pollId} was already recorded for ${ownerId}`);
+          alreadyVoted.push(choice);
+          continue;
         }
-        logger.info(`VoteService: Choice ${choice} on poll ${pollId} was already recorded for ${ownerId}`);
-        alreadyVoted.push(choice);
+        logger.warn(`VoteService: Choice ${choice} on poll ${pollId} failed, retrying once:`, error);
+        lastError = error;
+      }
+
+      // Back-to-back creates each re-read the identity contract nonce from Platform, and a stale
+      // read collides. Refresh the SDK's cached nonce before the single retry.
+      try {
+        await stateTransitionService.refreshIdentityNonce(ownerId);
+      } catch (refreshError) {
+        logger.warn(`VoteService: Nonce refresh before retrying choice ${choice} failed:`, refreshError);
+      }
+
+      try {
+        await createVote(choice);
+        recorded.push(choice);
+      } catch (retryError) {
+        if (isDuplicateVoteError(retryError)) {
+          logger.info(`VoteService: Choice ${choice} on poll ${pollId} landed on the first attempt after all`);
+          alreadyVoted.push(choice);
+          continue;
+        }
+        logger.error(`VoteService: Choice ${choice} on poll ${pollId} could not be recorded:`, retryError);
+        failed.push(choice);
+        lastError = retryError;
       }
     }
 
-    return { choices: requested, alreadyVoted };
+    if (failed.length === requested.length) {
+      throw lastError instanceof Error ? lastError : new Error('Failed to cast vote');
+    }
+
+    return {
+      choices: [...recorded, ...alreadyVoted].sort((a, b) => a - b),
+      alreadyVoted,
+      failed,
+    };
   }
 
   /**
@@ -196,34 +267,40 @@ class VoteService extends BaseDocumentService<VoteDocument> {
   /**
    * Tally a poll from the contract's countable indices.
    *
-   * Per-option counts come from the `choiceCounts` index in a single grouped count query and
-   * the grand total from `pollTotal`; both are O(1) on Drive. Falls back to per-choice equality
-   * counts, then to a full scan, if the count trees cannot answer.
+   * Per-option counts come from the `choiceCounts` index in a single grouped count query, which
+   * is O(1) on Drive. The total is the sum of those counts rather than a second `pollTotal`
+   * query: `choice` is schema-valid for 0-9 on every poll regardless of how many options it
+   * actually has, so a vote for an option this poll does not have would inflate `pollTotal` and
+   * stop the displayed percentages summing to 100.
+   *
+   * Falls back to per-choice equality counts, then to a full scan, if the count trees cannot
+   * answer. `pollTotal` is consulted only when even the scan fails.
    */
   async getVoteTally(pollId: string, optionCount: number): Promise<VoteTally> {
     const size = Math.min(Math.max(optionCount, 0), MAX_POLL_OPTIONS);
-
-    const [grouped, total] = await Promise.all([
-      this.countChoicesGrouped(pollId, size),
-      this.countPollTotal(pollId),
-    ]);
-
-    let counts = grouped;
-
-    if (counts === null) {
-      counts = await this.countChoicesIndividually(pollId, size);
-    } else if (total !== null && total > 0 && sum(counts) === 0) {
-      // The grouped query answered, but disagrees with the grand total. Trust neither.
-      logger.warn(`VoteService: Grouped tally for poll ${pollId} returned no choices despite ${total} votes`);
-      counts = await this.countChoicesIndividually(pollId, size);
+    if (size === 0) {
+      return { counts: [], total: 0 };
     }
 
-    if (counts === null) {
-      const scanned = await this.tallyByScan(pollId, size);
-      return { counts: scanned.counts, total: total ?? scanned.total };
+    const grouped = await this.countChoicesGrouped(pollId, size);
+    if (grouped) {
+      return { counts: grouped, total: sum(grouped) };
     }
 
-    return { counts, total: total ?? sum(counts) };
+    const individually = await this.countChoicesIndividually(pollId, size);
+    if (individually) {
+      return { counts: individually, total: sum(individually) };
+    }
+
+    const scanned = await this.tallyByScan(pollId, size);
+    if (scanned) {
+      return scanned;
+    }
+
+    // No breakdown is available at all. `pollTotal` at least reports a vote count, even though
+    // it may include votes for options outside this poll's range.
+    logger.warn(`VoteService: No per-option tally available for poll ${pollId}, reporting the grand total only`);
+    return { counts: new Array<number>(size).fill(0), total: (await this.countPollTotal(pollId)) ?? 0 };
   }
 
   /**
@@ -280,14 +357,18 @@ class VoteService extends BaseDocumentService<VoteDocument> {
 
   /**
    * Per-option counts in one round trip via the `choiceCounts` countable index.
-   * Returns null when the query fails or returns keys that do not decode to a choice.
+   *
+   * The `in` operand is narrowed to the poll's own options, so votes for an option this poll
+   * does not have never reach the tally. Returns null when the query fails or returns keys that
+   * do not decode to one of those options — which, given the narrowed operand, means the result
+   * encoding is not what this code expects and a fallback should answer instead.
    */
   private async countChoicesGrouped(pollId: string, optionCount: number): Promise<number[] | null> {
     try {
       const result = await this.countVotes({
         where: [
           ['pollId', '==', pollId],
-          ['choice', 'in', ALL_CHOICES],
+          ['choice', 'in', Array.from({ length: optionCount }, (_, choice) => choice)],
         ],
         groupBy: ['choice'],
       });
@@ -299,14 +380,11 @@ class VoteService extends BaseDocumentService<VoteDocument> {
         if (key === '') continue;
 
         const choice = parseInt(key, 16) - CHOICE_VALUE_TAG;
-        if (!Number.isInteger(choice) || choice < 0 || choice >= MAX_POLL_OPTIONS) {
-          logger.warn(`VoteService: Grouped tally for poll ${pollId} returned undecodable key "${key}"`);
+        if (!Number.isInteger(choice) || choice < 0 || choice >= optionCount) {
+          logger.warn(`VoteService: Grouped tally for poll ${pollId} returned unexpected key "${key}"`);
           return null;
         }
-        // Votes for an option this poll does not have are ignored rather than dropped silently.
-        if (choice < optionCount) {
-          counts[choice] = Number(value);
-        }
+        counts[choice] = Number(value);
       }
 
       return counts;
@@ -316,7 +394,12 @@ class VoteService extends BaseDocumentService<VoteDocument> {
     }
   }
 
-  /** Grand total from the `pollTotal` countable index. Null when the query fails. */
+  /**
+   * Grand total from the `pollTotal` countable index. Null when the query fails.
+   *
+   * This counts every vote document on the poll, including any whose `choice` is outside the
+   * poll's option range, so it is only used when no per-option breakdown can be obtained.
+   */
   private async countPollTotal(pollId: string): Promise<number | null> {
     try {
       const result = await this.countVotes({ where: [['pollId', '==', pollId]] });
@@ -347,21 +430,26 @@ class VoteService extends BaseDocumentService<VoteDocument> {
     }
   }
 
-  /** Last resort: page through every vote document and tally client-side. */
-  private async tallyByScan(pollId: string, optionCount: number): Promise<VoteTally> {
-    const counts = new Array<number>(optionCount).fill(0);
-
+  /**
+   * Last resort: page through every vote document and tally client-side.
+   * Returns null when the scan itself fails. Votes for an option outside the poll's range are
+   * discarded here too, so the total stays consistent with the per-option counts.
+   */
+  private async tallyByScan(pollId: string, optionCount: number): Promise<VoteTally | null> {
     try {
+      const counts = new Array<number>(optionCount).fill(0);
       const votes = await this.getVotesForPoll(pollId);
+
       for (const vote of votes) {
         if (vote.choice >= 0 && vote.choice < optionCount) {
           counts[vote.choice]++;
         }
       }
-      return { counts, total: votes.length };
+
+      return { counts, total: sum(counts) };
     } catch (error) {
       logger.error(`VoteService: Vote scan failed for poll ${pollId}:`, error);
-      return { counts, total: 0 };
+      return null;
     }
   }
 }

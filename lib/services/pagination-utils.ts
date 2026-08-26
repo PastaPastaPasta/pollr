@@ -27,6 +27,32 @@ export interface PaginateFetchResult<T> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SDK = any;
 
+/**
+ * Map over items with a bounded number of requests in flight.
+ *
+ * Platform queries fan out to DAPI nodes, so issuing one per feed item at once invites rate
+ * limiting and head-of-line stalls. Callers cap concurrency with this instead of `Promise.all`.
+ * Results keep the input order; a rejection propagates like `Promise.all`.
+ */
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  const workerCount = Math.min(Math.max(limit, 1), items.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    for (let index = cursor++; index < items.length; index = cursor++) {
+      results[index] = await mapper(items[index], index);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
 export async function paginateFetchAll<T>(
   sdk: SDK,
   queryBuilder: (startAfter?: string) => Record<string, unknown>,

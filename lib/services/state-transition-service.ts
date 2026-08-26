@@ -168,6 +168,19 @@ function cleanupOldPendingSTs(): void {
 
 class StateTransitionService {
   /**
+   * Refresh the SDK's cached identity nonce from Platform.
+   *
+   * Document creates read the identity contract nonce before signing, so a sequence of writes
+   * from the same identity can pick up a stale value and collide. Callers issuing back-to-back
+   * writes use this between attempts.
+   */
+  async refreshIdentityNonce(ownerId: string): Promise<void> {
+    const sdk = await getEvoSdk();
+    const { Identifier } = await getWasmClasses();
+    await sdk.wasm.refreshIdentityNonce(new Identifier(ownerId));
+  }
+
+  /**
    * Get the private key from secure storage
    */
   private async getPrivateKey(identityId: string): Promise<string> {
