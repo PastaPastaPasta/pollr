@@ -12,12 +12,15 @@ export interface EnrichedPoll extends PollTally {
   ownerUsername: string | null
 }
 
-function emptyTally(optionCount: number): PollTally {
-  return {
-    voteCounts: new Array<number>(optionCount).fill(0),
-    totalVotes: 0,
-    userChoices: [],
-  }
+/**
+ * The tally for a poll we could not read at all.
+ *
+ * Every field is null rather than zero: a feed card must say "unavailable", not assert that a
+ * poll has no votes and that the viewer has not voted on it. The second half matters most - a
+ * fabricated empty `userChoices` reopens the ballot for someone who already voted.
+ */
+function unknownTally(): PollTally {
+  return { voteCounts: null, totalVotes: null, userChoices: null }
 }
 
 class PollMetadataService {
@@ -33,12 +36,14 @@ class PollMetadataService {
       mapWithConcurrency(polls, TALLY_CONCURRENCY, async (poll) => {
         try {
           // Tallies come from the contract's countable indices, so this stays O(1) per poll.
-          const tally = await voteService.getPollTally(poll.$id, poll.options.length, userId)
+          // getPollTally already reports each half's failure as null rather than throwing;
+          // this catch is for the unexpected.
+          const tally = await voteService.getPollTally(poll, userId)
 
           return [poll.$id, tally] as const
         } catch (error) {
           logger.error(`PollMetadata: Failed to fetch vote totals for poll ${poll.$id}:`, error)
-          return [poll.$id, emptyTally(poll.options.length)] as const
+          return [poll.$id, unknownTally()] as const
         }
       })
     ])
@@ -48,7 +53,7 @@ class PollMetadataService {
     return polls.map((poll) => ({
       poll,
       ownerUsername: ownerUsernames.get(poll.$ownerId) ?? null,
-      ...(voteMetadataMap.get(poll.$id) ?? emptyTally(poll.options.length))
+      ...(voteMetadataMap.get(poll.$id) ?? unknownTally())
     }))
   }
 }
