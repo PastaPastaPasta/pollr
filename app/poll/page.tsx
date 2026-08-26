@@ -10,51 +10,29 @@ import { PollCard } from '@/components/poll/poll-card'
 import { PollSkeleton } from '@/components/poll/poll-skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { usePoll } from '@/hooks/use-poll'
-import { useAuth } from '@/contexts/auth-context'
 import { useSdk } from '@/contexts/sdk-context'
-import { useLoginModal } from '@/hooks/use-login-modal'
+import { useVoteWithLogin } from '@/hooks/use-vote-with-login'
 import toast from 'react-hot-toast'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 
 function PollPageContent() {
   const searchParams = useSearchParams()
   const pollId = searchParams.get('id')
   const { isReady } = useSdk()
-  const { user } = useAuth()
-  const { open: openLogin } = useLoginModal()
-  const [pendingVote, setPendingVote] = useState<number[] | null>(null)
-  const submittingRef = useRef(false)
 
   const {
     poll,
     ownerUsername,
     voteCounts,
     totalVotes,
-    userVote,
+    userChoices,
     isLoading,
     error,
     castVote,
     isVoting,
   } = usePoll(pollId)
 
-  const handleVote = useCallback(async (selectedOptions: number[]) => {
-    if (!user) {
-      setPendingVote(selectedOptions)
-      openLogin()
-      return
-    }
-    await castVote(selectedOptions)
-  }, [user, castVote, openLogin])
-
-  // Auto-submit pending vote after login
-  useEffect(() => {
-    if (!pendingVote || !user || submittingRef.current) return
-    submittingRef.current = true
-    castVote(pendingVote)
-      .then((success) => { if (success) setPendingVote(null) })
-      .catch(() => setPendingVote(null))
-      .finally(() => { submittingRef.current = false })
-  }, [pendingVote, user, castVote])
+  const handleVote = useVoteWithLogin(castVote)
 
   const handleShare = useCallback(() => {
     const url = window.location.href
@@ -131,7 +109,7 @@ function PollPageContent() {
         ownerUsername={ownerUsername}
         voteCounts={voteCounts}
         totalVotes={totalVotes}
-        userVote={userVote}
+        userChoices={userChoices}
         onVote={handleVote}
         isVoting={isVoting}
         isInteractive={true}

@@ -1,7 +1,13 @@
 import { logger } from '@/lib/logger';
 import { BaseDocumentService } from './document-service';
 import { identifierToBase58, normalizeSDKResponse } from './sdk-helpers';
-import { POLLR_CONTRACT_ID } from '@/lib/constants';
+import {
+  MAX_OPTION_LENGTH,
+  MAX_POLL_OPTIONS,
+  MAX_QUESTION_LENGTH,
+  MIN_POLL_OPTIONS,
+  POLLR_CONTRACT_ID,
+} from '@/lib/constants';
 
 export interface PollDocument {
   $id: string;
@@ -9,29 +15,22 @@ export interface PollDocument {
   $createdAt: number;
   question: string;
   options: string[];
-  pollType: 0 | 1; // 0 = single choice, 1 = multiple choice
+  /** True when voters may pick more than one option. */
+  multiChoice: boolean;
+  /** Advisory close time (ms since epoch). Absent when the poll never closes. */
+  endsAt?: number;
 }
 
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
+/** Contract field name holding option `index`. */
+function optionField(index: number): string {
+  return `option${index}`;
+}
 
-/** Decode a binary field (Uint8Array, number[], base64 string, or plain string) to a UTF-8 string. */
-function decodeBinaryField(raw: unknown): string {
-  if (!raw) return '';
-  if (raw instanceof Uint8Array) return textDecoder.decode(raw);
-  if (Array.isArray(raw)) return textDecoder.decode(new Uint8Array(raw));
-  if (typeof raw === 'string') {
-    // SDK returns byte array fields as base64-encoded strings
-    // Detect base64: if it doesn't look like valid JSON/UTF-8 content, try base64 decode
-    try {
-      const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
-      return textDecoder.decode(bytes);
-    } catch {
-      // Not base64, return as-is
-      return raw;
-    }
-  }
-  return '';
+/** Coerce a platform integer (surfaced as number, bigint, or decimal string) to a number. */
+function toOptionalNumber(raw: unknown): number | undefined {
+  if (raw === null || raw === undefined) return undefined;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
 }
 
 class PollService extends BaseDocumentService<PollDocument> {
@@ -42,68 +41,94 @@ class PollService extends BaseDocumentService<PollDocument> {
   protected transformDocument(doc: Record<string, unknown>): PollDocument {
     const data = (doc.data || doc) as Record<string, unknown>;
 
-    const question = decodeBinaryField(data.question || doc.question);
+    // Options live in enumerated `option0`..`option9` fields; the first gap ends the list.
+    const readOption = (index: number): unknown => data[optionField(index)] ?? doc[optionField(index)];
 
-    // Options are stored as a JSON-encoded byte array
-    const rawOptions = data.options || doc.options;
-    let options: string[] = [];
-    if (rawOptions) {
-      try {
-        // Already a string array (no decoding needed)
-        if (Array.isArray(rawOptions) && rawOptions.length > 0 && typeof rawOptions[0] === 'string') {
-          options = rawOptions as string[];
-        } else {
-          options = JSON.parse(decodeBinaryField(rawOptions));
-        }
-      } catch (error) {
-        logger.error('PollService: Failed to decode options:', error);
+    const options: string[] = [];
+    for (let index = 0; index < MAX_POLL_OPTIONS; index++) {
+      const raw = readOption(index);
+      if (typeof raw !== 'string') break;
+      options.push(raw);
+    }
+
+    // A gap makes every later option unreachable. Nothing this app writes produces one, so say
+    // so rather than truncating a poll's choices silently.
+    if (options.length < MAX_POLL_OPTIONS) {
+      const orphaned: number[] = [];
+      for (let index = options.length + 1; index < MAX_POLL_OPTIONS; index++) {
+        if (typeof readOption(index) === 'string') orphaned.push(index);
+      }
+      if (orphaned.length > 0) {
+        logger.warn(
+          `PollService: Poll ${String(doc.$id ?? doc.id)} has no option${options.length} but does have ` +
+          `option${orphaned.join(', option')}; ignoring everything past the gap`
+        );
       }
     }
 
-    const pollType = ((data.pollType ?? doc.pollType) as number) || 0;
+    const question = data.question ?? doc.question;
 
     return {
       $id: identifierToBase58(doc.$id || doc.id) || (doc.$id || doc.id) as string,
       $ownerId: identifierToBase58(doc.$ownerId || doc.ownerId) || (doc.$ownerId || doc.ownerId) as string,
       $createdAt: (doc.$createdAt || doc.createdAt) as number,
-      question,
+      question: typeof question === 'string' ? question : '',
       options,
-      pollType: pollType as 0 | 1,
+      multiChoice: (data.multiChoice ?? doc.multiChoice) === true,
+      endsAt: toOptionalNumber(data.endsAt ?? doc.endsAt),
     };
   }
 
   /**
-   * Create a new poll
+   * Create a new poll.
+   *
+   * Every field is a plain string, boolean, or integer — the v2 contract has no binary
+   * poll fields, so nothing here needs byte encoding.
    */
   async createPoll(
     ownerId: string,
     question: string,
     options: string[],
-    pollType: 0 | 1
+    multiChoice: boolean,
+    endsAt?: number
   ): Promise<PollDocument> {
-    if (!question.trim()) {
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion) {
       throw new Error('Question is required');
     }
-    if (options.length < 2) {
-      throw new Error('At least 2 options are required');
+    if (trimmedQuestion.length > MAX_QUESTION_LENGTH) {
+      throw new Error(`Question must be ${MAX_QUESTION_LENGTH} characters or fewer`);
     }
-    if (options.length > 10) {
-      throw new Error('Maximum 10 options allowed');
+
+    const trimmedOptions = options.map(option => option.trim());
+    if (trimmedOptions.length < MIN_POLL_OPTIONS) {
+      throw new Error(`At least ${MIN_POLL_OPTIONS} options are required`);
     }
-    if (options.some(opt => !opt.trim())) {
+    if (trimmedOptions.length > MAX_POLL_OPTIONS) {
+      throw new Error(`Maximum ${MAX_POLL_OPTIONS} options allowed`);
+    }
+    if (trimmedOptions.some(option => !option)) {
       throw new Error('All options must be non-empty');
     }
+    if (trimmedOptions.some(option => option.length > MAX_OPTION_LENGTH)) {
+      throw new Error(`Each option must be ${MAX_OPTION_LENGTH} characters or fewer`);
+    }
+    if (endsAt !== undefined && (!Number.isInteger(endsAt) || endsAt < 0)) {
+      throw new Error('Close time must be a timestamp in milliseconds');
+    }
 
-    // byteArray fields MUST be Uint8Array for the WASM serialization layer
-    // to produce Value::Bytes (number[] produces Value::Array which platform rejects)
-    const questionBytes = textEncoder.encode(question.trim());
-    const optionsBytes = textEncoder.encode(JSON.stringify(options.map(o => o.trim())));
-
-    const documentData: Record<string, unknown> = {
-      question: questionBytes,
-      options: optionsBytes,
-      pollType,
-    };
+    const documentData: Record<string, unknown> = { question: trimmedQuestion };
+    trimmedOptions.forEach((option, index) => {
+      documentData[optionField(index)] = option;
+    });
+    // Both optional fields are omitted rather than written falsy: absent means "single choice"
+    // and "never closes", and the contract forbids additional/unset properties being sent as null.
+    if (multiChoice) {
+      documentData.multiChoice = true;
+    }
+    if (endsAt !== undefined) {
+      documentData.endsAt = endsAt;
+    }
 
     return this.create(ownerId, documentData);
   }

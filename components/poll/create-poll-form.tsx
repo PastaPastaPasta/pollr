@@ -9,13 +9,24 @@ import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/auth-context'
 import { pollService } from '@/lib/services/poll-service'
+import {
+  MAX_OPTION_LENGTH,
+  MAX_POLL_OPTIONS,
+  MAX_QUESTION_LENGTH,
+  MIN_POLL_OPTIONS,
+} from '@/lib/constants'
 import toast from 'react-hot-toast'
 import { X, Plus } from 'lucide-react'
 
-const MAX_QUESTION_LENGTH = 280
-const MAX_OPTION_LENGTH = 200
-const MIN_OPTIONS = 2
-const MAX_OPTIONS = 10
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Optional advisory close times offered on the create form. */
+const DURATION_OPTIONS: { value: string; label: string; ms: number | null }[] = [
+  { value: 'never', label: 'No close time', ms: null },
+  { value: '1d', label: 'Closes in 1 day', ms: DAY_MS },
+  { value: '3d', label: 'Closes in 3 days', ms: 3 * DAY_MS },
+  { value: '7d', label: 'Closes in 7 days', ms: 7 * DAY_MS },
+]
 
 export function CreatePollForm() {
   const router = useRouter()
@@ -23,11 +34,12 @@ export function CreatePollForm() {
 
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState<string[]>(['', ''])
-  const [pollType, setPollType] = useState<0 | 1>(0)
+  const [multiChoice, setMultiChoice] = useState(false)
+  const [duration, setDuration] = useState('never')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const canAddOption = options.length < MAX_OPTIONS
-  const canRemoveOption = options.length > MIN_OPTIONS
+  const canAddOption = options.length < MAX_POLL_OPTIONS
+  const canRemoveOption = options.length > MIN_POLL_OPTIONS
 
   const handleQuestionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
@@ -59,7 +71,7 @@ export function CreatePollForm() {
 
   const isValid =
     question.trim().length > 0 &&
-    options.filter((o) => o.trim().length > 0).length >= MIN_OPTIONS
+    options.filter((o) => o.trim().length > 0).length >= MIN_POLL_OPTIONS
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,22 +82,13 @@ export function CreatePollForm() {
       .map((o) => o.trim())
       .filter((o) => o.length > 0)
 
-    if (trimmedOptions.length < MIN_OPTIONS) {
+    if (trimmedOptions.length < MIN_POLL_OPTIONS) {
       toast.error('At least 2 non-empty options are required')
       return
     }
 
-    // Check byte lengths to avoid silent platform rejection for multibyte chars
-    const questionBytes = new TextEncoder().encode(question.trim()).length
-    const optionsBytes = new TextEncoder().encode(JSON.stringify(trimmedOptions)).length
-    if (questionBytes > 1024) {
-      toast.error('Question is too long (reduce characters or emoji)')
-      return
-    }
-    if (optionsBytes > 4096) {
-      toast.error('Options are too long — shorten some option text')
-      return
-    }
+    const durationMs = DURATION_OPTIONS.find((d) => d.value === duration)?.ms ?? null
+    const endsAt = durationMs === null ? undefined : Date.now() + durationMs
 
     setIsSubmitting(true)
 
@@ -94,7 +97,8 @@ export function CreatePollForm() {
         user.identityId,
         question.trim(),
         trimmedOptions,
-        pollType
+        multiChoice,
+        endsAt
       )
 
       toast.success('Poll created successfully!')
@@ -203,9 +207,9 @@ export function CreatePollForm() {
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={pollType === 0 ? 'default' : 'outline'}
+                variant={multiChoice ? 'outline' : 'default'}
                 size="sm"
-                onClick={() => setPollType(0)}
+                onClick={() => setMultiChoice(false)}
                 disabled={isSubmitting}
                 className="flex-1"
               >
@@ -213,15 +217,42 @@ export function CreatePollForm() {
               </Button>
               <Button
                 type="button"
-                variant={pollType === 1 ? 'default' : 'outline'}
+                variant={multiChoice ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setPollType(1)}
+                onClick={() => setMultiChoice(true)}
                 disabled={isSubmitting}
                 className="flex-1"
               >
                 Multiple Choice
               </Button>
             </div>
+          </div>
+
+          {/* Close time */}
+          <div className="space-y-2">
+            <label
+              htmlFor="duration"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Close Time <span className="text-gray-400">(optional)</span>
+            </label>
+            <select
+              id="duration"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              disabled={isSubmitting}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 focus:border-pollr-500 focus:outline-none disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            >
+              {DURATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Voting is hidden once the close time passes. This is advisory — it is not enforced
+              on-chain.
+            </p>
           </div>
 
           {/* Submit */}

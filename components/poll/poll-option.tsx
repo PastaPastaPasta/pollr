@@ -11,7 +11,7 @@ interface PollOptionProps {
   isUserPick: boolean
   showResults: boolean
   disabled: boolean
-  pollType: 0 | 1
+  multiChoice: boolean
   onChange: (index: number, checked: boolean) => void
 }
 
@@ -24,7 +24,7 @@ export function PollOption({
   isUserPick,
   showResults,
   disabled,
-  pollType,
+  multiChoice,
   onChange,
 }: PollOptionProps) {
   const percentage = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0
@@ -52,7 +52,7 @@ export function PollOption({
 
       {/* Radio dot or checkbox */}
       <div className="relative z-10 flex-shrink-0">
-        {pollType === 0 ? (
+        {!multiChoice ? (
           /* Radio dot */
           <div
             className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${

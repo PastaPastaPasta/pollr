@@ -58,6 +58,7 @@ function MyPollsPage() {
               ownerUsername={poll.ownerUsername}
               voteCounts={poll.voteCounts}
               totalVotes={poll.totalVotes}
+              userChoices={poll.userChoices}
               isInteractive={false}
             />
           ))}
