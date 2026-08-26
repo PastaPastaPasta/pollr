@@ -13,6 +13,7 @@ import { usePoll } from '@/hooks/use-poll'
 import { useAuth } from '@/contexts/auth-context'
 import { useSdk } from '@/contexts/sdk-context'
 import { useLoginModal } from '@/hooks/use-login-modal'
+import { logger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 import { useState, useCallback, useEffect, useRef } from 'react'
 
@@ -30,20 +31,22 @@ function PollPageContent() {
     ownerUsername,
     voteCounts,
     totalVotes,
-    userVote,
+    userChoices,
     isLoading,
     error,
     castVote,
     isVoting,
   } = usePoll(pollId)
 
-  const handleVote = useCallback(async (selectedOptions: number[]) => {
+  const handleVote = useCallback((choices: number[]) => {
     if (!user) {
-      setPendingVote(selectedOptions)
+      setPendingVote(choices)
       openLogin()
       return
     }
-    await castVote(selectedOptions)
+    castVote(choices).catch((err) => {
+      logger.error('Error casting vote:', err)
+    })
   }, [user, castVote, openLogin])
 
   // Auto-submit pending vote after login
@@ -51,9 +54,11 @@ function PollPageContent() {
     if (!pendingVote || !user || submittingRef.current) return
     submittingRef.current = true
     castVote(pendingVote)
-      .then((success) => { if (success) setPendingVote(null) })
-      .catch(() => setPendingVote(null))
-      .finally(() => { submittingRef.current = false })
+      .catch((err) => { logger.error('Error casting pending vote:', err) })
+      .finally(() => {
+        setPendingVote(null)
+        submittingRef.current = false
+      })
   }, [pendingVote, user, castVote])
 
   const handleShare = useCallback(() => {
@@ -131,7 +136,7 @@ function PollPageContent() {
         ownerUsername={ownerUsername}
         voteCounts={voteCounts}
         totalVotes={totalVotes}
-        userVote={userVote}
+        userChoices={userChoices}
         onVote={handleVote}
         isVoting={isVoting}
         isInteractive={true}

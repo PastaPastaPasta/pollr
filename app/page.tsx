@@ -16,13 +16,12 @@ import { voteService } from '@/lib/services/vote-service'
 import { logger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 import type { EnrichedPoll } from '@/lib/services/poll-metadata-service'
-import type { VoteDocument } from '@/lib/services/vote-service'
 
 function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
   const { user } = useAuth()
   const { open: openLogin } = useLoginModal()
   const [isVoting, setIsVoting] = useState(false)
-  const [userVote, setUserVote] = useState<VoteDocument | null>(enrichedPoll.userVote ?? null)
+  const [userChoices, setUserChoices] = useState<number[]>(enrichedPoll.userChoices)
   const [voteCounts, setVoteCounts] = useState(enrichedPoll.voteCounts)
   const [totalVotes, setTotalVotes] = useState(enrichedPoll.totalVotes)
   const [pendingVote, setPendingVote] = useState<number[] | null>(null)
@@ -30,60 +29,84 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
 
   // Sync enriched data when it refreshes (e.g. after login triggers re-fetch)
   useEffect(() => {
-    setUserVote(enrichedPoll.userVote ?? null)
+    setUserChoices(enrichedPoll.userChoices)
     setVoteCounts(enrichedPoll.voteCounts)
     setTotalVotes(enrichedPoll.totalVotes)
-  }, [enrichedPoll.userVote, enrichedPoll.voteCounts, enrichedPoll.totalVotes])
+  }, [enrichedPoll.userChoices, enrichedPoll.voteCounts, enrichedPoll.totalVotes])
 
-  const castVote = useCallback(async (selectedOptions: number[]) => {
+  /** Re-read this poll's tallies from Platform, e.g. after a partially applied ballot. */
+  const resync = useCallback(async () => {
+    const poll = enrichedPoll.poll
+    try {
+      const [tally, choices] = await Promise.all([
+        voteService.getVoteTally(poll.$id, poll.options.length),
+        user ? voteService.getMyVotes(poll.$id, user.identityId) : Promise.resolve<number[]>([]),
+      ])
+      setVoteCounts(tally.counts)
+      setTotalVotes(tally.total)
+      setUserChoices(choices)
+    } catch (err) {
+      logger.error(`Failed to resync poll ${poll.$id}:`, err)
+    }
+  }, [user, enrichedPoll.poll])
+
+  const castVote = useCallback(async (choices: number[]) => {
     if (!user) return
     try {
       setIsVoting(true)
-      const newVote = await voteService.castVote(
+      const result = await voteService.castVote(
         user.identityId,
         enrichedPoll.poll.$id,
         enrichedPoll.poll.$ownerId,
-        selectedOptions
+        choices
       )
-      setUserVote(newVote)
+      const recorded = result.choices.filter(choice => !result.alreadyVoted.includes(choice))
+
+      setUserChoices(result.choices)
       // Optimistic update using functional updaters to avoid stale closure
       setVoteCounts(prev => {
         const updated = [...prev]
-        selectedOptions.forEach(i => { updated[i] = (updated[i] || 0) + 1 })
+        recorded.forEach(choice => { updated[choice] = (updated[choice] || 0) + 1 })
         return updated
       })
-      setTotalVotes(prev => prev + 1)
-      toast.success('Vote submitted!')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to cast vote'
-      if (msg.includes('already exists') || msg.includes('duplicate')) {
-        toast.error('You have already voted on this poll')
+      setTotalVotes(prev => prev + recorded.length)
+
+      if (recorded.length === 0) {
+        toast('You had already voted on this poll')
       } else {
-        toast.error(msg)
+        toast.success('Vote submitted!')
       }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cast vote')
       logger.error('Error casting vote:', err)
+      // Part of a multi-choice ballot may have landed before the failure — resync from Platform.
+      await resync()
     } finally {
       setIsVoting(false)
     }
-  }, [user, enrichedPoll.poll])
+  }, [user, enrichedPoll.poll, resync])
 
   // Auto-submit pending vote after login
   useEffect(() => {
     if (!pendingVote || !user || submittingRef.current) return
     submittingRef.current = true
-    void castVote(pendingVote)
-      .then(() => setPendingVote(null))
-      .catch(() => setPendingVote(null))
-      .finally(() => { submittingRef.current = false })
+    castVote(pendingVote)
+      .catch((err) => { logger.error('Error casting pending vote:', err) })
+      .finally(() => {
+        setPendingVote(null)
+        submittingRef.current = false
+      })
   }, [pendingVote, user, castVote])
 
-  const handleVote = useCallback((selectedOptions: number[]) => {
+  const handleVote = useCallback((choices: number[]) => {
     if (!user) {
-      setPendingVote(selectedOptions)
+      setPendingVote(choices)
       openLogin()
       return
     }
-    void castVote(selectedOptions)
+    castVote(choices).catch((err) => {
+      logger.error('Error casting vote:', err)
+    })
   }, [user, castVote, openLogin])
 
   return (
@@ -92,7 +115,7 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
       ownerUsername={enrichedPoll.ownerUsername}
       voteCounts={voteCounts}
       totalVotes={totalVotes}
-      userVote={userVote}
+      userChoices={userChoices}
       onVote={handleVote}
       isVoting={isVoting}
       isInteractive={true}

@@ -2,23 +2,22 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { pollService, type PollDocument } from '@/lib/services/poll-service';
-import { voteService, type VoteDocument } from '@/lib/services/vote-service';
+import { voteService } from '@/lib/services/vote-service';
 import { useAuth } from '@/contexts/auth-context';
 import { useSdk } from '@/contexts/sdk-context';
 import { logger } from '@/lib/logger';
-import { computeVoteCounts } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface UsePollResult {
   poll: PollDocument | null;
   ownerUsername: string | null;
-  votes: VoteDocument[];
   voteCounts: number[];
   totalVotes: number;
-  userVote: VoteDocument | null;
+  /** Option indices the signed-in user has already voted for. */
+  userChoices: number[];
   isLoading: boolean;
   error: string | null;
-  castVote: (selectedOptions: number[]) => Promise<boolean>;
+  castVote: (choices: number[]) => Promise<boolean>;
   isVoting: boolean;
   refetch: () => Promise<void>;
 }
@@ -28,18 +27,19 @@ export function usePoll(pollId: string | null): UsePollResult {
   const { isReady } = useSdk();
   const [poll, setPoll] = useState<PollDocument | null>(null);
   const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
-  const [votes, setVotes] = useState<VoteDocument[]>([]);
   const [voteCounts, setVoteCounts] = useState<number[]>([]);
   const [totalVotes, setTotalVotes] = useState(0);
-  const [userVote, setUserVote] = useState<VoteDocument | null>(null);
+  const [userChoices, setUserChoices] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
 
-  const updateVoteCounts = useCallback((allVotes: VoteDocument[], optionCount: number) => {
-    const { counts, total } = computeVoteCounts(allVotes, optionCount);
-    setVoteCounts(counts);
-    setTotalVotes(total);
+  const resetPollState = useCallback(() => {
+    setPoll(null);
+    setOwnerUsername(null);
+    setVoteCounts([]);
+    setTotalVotes(0);
+    setUserChoices([]);
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -48,12 +48,7 @@ export function usePoll(pollId: string | null): UsePollResult {
     }
 
     if (!pollId) {
-      setPoll(null);
-      setOwnerUsername(null);
-      setVotes([]);
-      setVoteCounts([]);
-      setTotalVotes(0);
-      setUserVote(null);
+      resetPollState();
       setError(null);
       setIsLoading(false);
       return;
@@ -64,43 +59,33 @@ export function usePoll(pollId: string | null): UsePollResult {
       setError(null);
 
       const { dpnsService } = await import('@/lib/services/dpns-service');
-      const [fetchedPoll, fetchedVotes] = await Promise.all([
-        pollService.getPoll(pollId),
-        voteService.getVotesForPoll(pollId),
-      ]);
+      const fetchedPoll = await pollService.getPoll(pollId);
 
       if (!fetchedPoll) {
         setError('Poll not found');
-        setPoll(null);
-        setOwnerUsername(null);
-        setVotes([]);
-        setVoteCounts([]);
-        setTotalVotes(0);
-        setUserVote(null);
+        resetPollState();
         return;
       }
 
-      setPoll(fetchedPoll);
-      setOwnerUsername(await dpnsService.resolveUsername(fetchedPoll.$ownerId));
-      setVotes(fetchedVotes);
-      updateVoteCounts(fetchedVotes, fetchedPoll.options.length);
+      const [username, tally, choices] = await Promise.all([
+        dpnsService.resolveUsername(fetchedPoll.$ownerId),
+        voteService.getVoteTally(pollId, fetchedPoll.options.length),
+        user ? voteService.getMyVotes(pollId, user.identityId) : Promise.resolve<number[]>([]),
+      ]);
 
-      // Check if current user has voted
-      if (user) {
-        const existingVote = fetchedVotes.find(v => v.$ownerId === user.identityId);
-        setUserVote(existingVote || null);
-      } else {
-        setUserVote(null);
-      }
+      setPoll(fetchedPoll);
+      setOwnerUsername(username);
+      setVoteCounts(tally.counts);
+      setTotalVotes(tally.total);
+      setUserChoices(choices);
     } catch (err) {
       logger.error('Error fetching poll data:', err);
-      setPoll(null);
-      setOwnerUsername(null);
+      resetPollState();
       setError('Failed to load poll');
     } finally {
       setIsLoading(false);
     }
-  }, [isReady, pollId, user, updateVoteCounts]);
+  }, [isReady, pollId, user, resetPollState]);
 
   useEffect(() => {
     if (!isReady) {
@@ -113,52 +98,51 @@ export function usePoll(pollId: string | null): UsePollResult {
     });
   }, [fetchData, isReady]);
 
-  const castVote = useCallback(async (selectedOptions: number[]): Promise<boolean> => {
+  const castVote = useCallback(async (choices: number[]): Promise<boolean> => {
     if (!poll || !user) return false;
 
     try {
       setIsVoting(true);
-      const newVote = await voteService.castVote(
+      const result = await voteService.castVote(
         user.identityId,
         poll.$id,
         poll.$ownerId,
-        selectedOptions
+        choices
       );
 
-      setUserVote(newVote);
+      const recorded = result.choices.filter(choice => !result.alreadyVoted.includes(choice));
 
-      // Optimistically update vote counts
-      const newVotes = [...votes, newVote];
-      setVotes(newVotes);
-      updateVoteCounts(newVotes, poll.options.length);
+      setUserChoices(result.choices);
+      setVoteCounts(prev => {
+        const updated = [...prev];
+        recorded.forEach(choice => { updated[choice] = (updated[choice] || 0) + 1 });
+        return updated;
+      });
+      setTotalVotes(prev => prev + recorded.length);
 
-      toast.success('Vote submitted!');
+      if (recorded.length === 0) {
+        toast('You had already voted on this poll');
+      } else {
+        toast.success('Vote submitted!');
+      }
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to cast vote';
-
-      if (errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
-        toast.error('You have already voted on this poll');
-        // Refetch to get current state
-        await fetchData();
-      } else {
-        toast.error(errorMessage);
-      }
-
+      toast.error(err instanceof Error ? err.message : 'Failed to cast vote');
       logger.error('Error casting vote:', err);
+      // Part of a multi-choice ballot may have landed before the failure — resync from Platform.
+      await fetchData();
       return false;
     } finally {
       setIsVoting(false);
     }
-  }, [poll, user, votes, updateVoteCounts, fetchData]);
+  }, [poll, user, fetchData]);
 
   return {
     poll,
     ownerUsername,
-    votes,
     voteCounts,
     totalVotes,
-    userVote,
+    userChoices,
     isLoading,
     error,
     castVote,

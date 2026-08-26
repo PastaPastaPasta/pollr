@@ -35,7 +35,7 @@ export function useMyPolls(ownerId: string | null): UseMyPollsResult {
       setIsLoading(true);
       setError(null);
       const result = await pollService.getPollsByOwner(ownerId);
-      const enrichedPolls = await pollMetadataService.enrichPolls(result);
+      const enrichedPolls = await pollMetadataService.enrichPolls(result, ownerId);
       setPolls(enrichedPolls);
     } catch (err) {
       logger.error('Error fetching my polls:', err);
