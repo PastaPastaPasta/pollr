@@ -13,6 +13,13 @@ import { isPollClosed, truncateId } from '@/lib/utils'
 import { CheckCircle2, Lock } from 'lucide-react'
 import type { PollDocument } from '@/lib/services/poll-service'
 
+function voteCountLabel(totalVotes: number, isClosed: boolean): string {
+  if (totalVotes > 0) {
+    return `${totalVotes} vote${totalVotes === 1 ? '' : 's'}`
+  }
+  return isClosed ? 'No votes' : 'Be the first to vote!'
+}
+
 interface PollCardProps {
   poll: PollDocument
   voteCounts: number[]
@@ -29,7 +36,7 @@ export function PollCard({
   poll,
   voteCounts,
   totalVotes,
-  userChoices,
+  userChoices = [],
   onVote,
   isVoting = false,
   isInteractive = false,
@@ -37,8 +44,7 @@ export function PollCard({
 }: PollCardProps) {
   const [draftChoices, setDraftChoices] = useState<number[]>([])
 
-  const choices = userChoices ?? []
-  const hasVoted = choices.length > 0
+  const hasVoted = userChoices.length > 0
   const isClosed = isPollClosed(poll)
   const canVote = isInteractive && !hasVoted && !isClosed
   const showResults = totalVotes > 0 || hasVoted || isClosed
@@ -115,8 +121,8 @@ export function PollCard({
             text={option}
             voteCount={voteCounts[index] || 0}
             totalVotes={totalVotes}
-            isSelected={hasVoted ? choices.includes(index) : draftChoices.includes(index)}
-            isUserPick={choices.includes(index)}
+            isSelected={hasVoted ? userChoices.includes(index) : draftChoices.includes(index)}
+            isUserPick={userChoices.includes(index)}
             showResults={showResults}
             disabled={!canVote || isVoting}
             multiChoice={poll.multiChoice}
@@ -128,11 +134,7 @@ export function PollCard({
       <CardFooter className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {totalVotes === 0
-              ? isClosed
-                ? 'No votes'
-                : 'Be the first to vote!'
-              : `${totalVotes} vote${totalVotes === 1 ? '' : 's'}`}
+            {voteCountLabel(totalVotes, isClosed)}
           </span>
           {endsLabel && (
             <span className="text-xs text-gray-400 dark:text-gray-500">

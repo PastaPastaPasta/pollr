@@ -2,7 +2,12 @@ import { logger } from '@/lib/logger';
 import { extractErrorMessage } from '@/lib/error-utils';
 import { BaseDocumentService } from './document-service';
 import { getEvoSdk } from './evo-sdk-service';
-import { identifierStringToDocumentBytes, identifierToBase58, mapToDocumentArray } from './sdk-helpers';
+import {
+  identifierStringToDocumentBytes,
+  identifierToBase58,
+  mapToDocumentArray,
+  type DocumentWhereClause,
+} from './sdk-helpers';
 import { paginateFetchAll } from './pagination-utils';
 import { MAX_POLL_OPTIONS, POLLR_CONTRACT_ID } from '@/lib/constants';
 
@@ -30,6 +35,35 @@ export interface VoteTally {
   total: number;
 }
 
+/** A poll's tally as a poll view renders it: `VoteTally` plus the viewing voter's own choices. */
+export interface PollTally {
+  /** Votes per option index, sized to the poll's option count. */
+  voteCounts: number[];
+  /** Total vote documents for the poll. Multi-choice polls count selections, not voters. */
+  totalVotes: number;
+  /** Option indices the viewing voter has already voted for. Empty when they have not voted. */
+  userChoices: number[];
+}
+
+/**
+ * Fold a completed ballot into a tally so a poll view can update without re-reading Platform.
+ * Choices Platform rejected as duplicates were already counted, so only the newly recorded
+ * ones move the numbers.
+ */
+export function applyCastVoteResult(tally: PollTally, result: CastVoteResult): PollTally {
+  const recorded = result.choices.filter(choice => !result.alreadyVoted.includes(choice));
+  const voteCounts = [...tally.voteCounts];
+  for (const choice of recorded) {
+    voteCounts[choice] = (voteCounts[choice] || 0) + 1;
+  }
+
+  return {
+    voteCounts,
+    totalVotes: tally.totalVotes + recorded.length,
+    userChoices: result.choices,
+  };
+}
+
 /**
  * Platform encodes an integer property as a single tagged byte for small values, and grouped
  * count results are keyed by the hex of that encoding. Choice 0 arrives as "80", 1 as "81", etc.
@@ -47,7 +81,13 @@ export function isDuplicateVoteError(error: unknown): boolean {
   return extractErrorMessage(error).toLowerCase().includes('duplicate unique properties');
 }
 
-function countToNumber(value: bigint | undefined): number {
+/**
+ * Read an ungrouped count result. An empty map means no votes; otherwise the aggregate lives
+ * under the '' key.
+ */
+function readAggregateCount(result: Map<string, bigint>): number {
+  if (result.size === 0) return 0;
+  const value = result.get('') ?? Array.from(result.values())[0];
   return value === undefined ? 0 : Number(value);
 }
 
@@ -187,6 +227,19 @@ class VoteService extends BaseDocumentService<VoteDocument> {
   }
 
   /**
+   * The tally a poll view renders: the poll's totals plus, when a voter is given, the choices
+   * that voter has already recorded.
+   */
+  async getPollTally(pollId: string, optionCount: number, voterId?: string | null): Promise<PollTally> {
+    const [tally, userChoices] = await Promise.all([
+      this.getVoteTally(pollId, optionCount),
+      voterId ? this.getMyVotes(pollId, voterId) : Promise.resolve<number[]>([]),
+    ]);
+
+    return { voteCounts: tally.counts, totalVotes: tally.total, userChoices };
+  }
+
+  /**
    * Get every vote on a poll, walking the `pollVotesByTime` index.
    * Only used as the last-resort tally path — prefer `getVoteTally`.
    */
@@ -208,17 +261,30 @@ class VoteService extends BaseDocumentService<VoteDocument> {
   }
 
   /**
+   * Run a count query against one of the contract's countable indices.
+   *
+   * The where clause must match the index exactly, and count queries reject `limit`, so callers
+   * pass nothing beyond the clause and an optional `groupBy`.
+   */
+  private async countVotes(
+    query: { where: DocumentWhereClause[]; groupBy?: string[] }
+  ): Promise<Map<string, bigint>> {
+    const sdk = await getEvoSdk();
+
+    return sdk.documents.count({
+      dataContractId: this.contractId,
+      documentTypeName: 'vote',
+      ...query,
+    });
+  }
+
+  /**
    * Per-option counts in one round trip via the `choiceCounts` countable index.
    * Returns null when the query fails or returns keys that do not decode to a choice.
    */
   private async countChoicesGrouped(pollId: string, optionCount: number): Promise<number[] | null> {
     try {
-      const sdk = await getEvoSdk();
-
-      // The where clause must match the countable index exactly, and count queries reject `limit`.
-      const result = await sdk.documents.count({
-        dataContractId: this.contractId,
-        documentTypeName: 'vote',
+      const result = await this.countVotes({
         where: [
           ['pollId', '==', pollId],
           ['choice', 'in', ALL_CHOICES],
@@ -239,7 +305,7 @@ class VoteService extends BaseDocumentService<VoteDocument> {
         }
         // Votes for an option this poll does not have are ignored rather than dropped silently.
         if (choice < optionCount) {
-          counts[choice] = countToNumber(value);
+          counts[choice] = Number(value);
         }
       }
 
@@ -253,17 +319,8 @@ class VoteService extends BaseDocumentService<VoteDocument> {
   /** Grand total from the `pollTotal` countable index. Null when the query fails. */
   private async countPollTotal(pollId: string): Promise<number | null> {
     try {
-      const sdk = await getEvoSdk();
-
-      const result = await sdk.documents.count({
-        dataContractId: this.contractId,
-        documentTypeName: 'vote',
-        where: [['pollId', '==', pollId]],
-      });
-
-      // An empty map means no votes; otherwise the aggregate lives under the '' key.
-      if (result.size === 0) return 0;
-      return countToNumber(result.get('') ?? Array.from(result.values())[0]);
+      const result = await this.countVotes({ where: [['pollId', '==', pollId]] });
+      return readAggregateCount(result);
     } catch (error) {
       logger.warn(`VoteService: Total count failed for poll ${pollId}, falling back:`, error);
       return null;
@@ -273,21 +330,15 @@ class VoteService extends BaseDocumentService<VoteDocument> {
   /** One equality count per option. Each is O(1); used when the grouped query cannot answer. */
   private async countChoicesIndividually(pollId: string, optionCount: number): Promise<number[] | null> {
     try {
-      const sdk = await getEvoSdk();
-
       return await Promise.all(
         Array.from({ length: optionCount }, async (_, choice) => {
-          const result = await sdk.documents.count({
-            dataContractId: this.contractId,
-            documentTypeName: 'vote',
+          const result = await this.countVotes({
             where: [
               ['pollId', '==', pollId],
               ['choice', '==', choice],
             ],
           });
-
-          if (result.size === 0) return 0;
-          return countToNumber(result.get('') ?? Array.from(result.values())[0]);
+          return readAggregateCount(result);
         })
       );
     } catch (error) {

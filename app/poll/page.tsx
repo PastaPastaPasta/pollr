@@ -10,21 +10,15 @@ import { PollCard } from '@/components/poll/poll-card'
 import { PollSkeleton } from '@/components/poll/poll-skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { usePoll } from '@/hooks/use-poll'
-import { useAuth } from '@/contexts/auth-context'
 import { useSdk } from '@/contexts/sdk-context'
-import { useLoginModal } from '@/hooks/use-login-modal'
-import { logger } from '@/lib/logger'
+import { useVoteWithLogin } from '@/hooks/use-vote-with-login'
 import toast from 'react-hot-toast'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 
 function PollPageContent() {
   const searchParams = useSearchParams()
   const pollId = searchParams.get('id')
   const { isReady } = useSdk()
-  const { user } = useAuth()
-  const { open: openLogin } = useLoginModal()
-  const [pendingVote, setPendingVote] = useState<number[] | null>(null)
-  const submittingRef = useRef(false)
 
   const {
     poll,
@@ -38,28 +32,7 @@ function PollPageContent() {
     isVoting,
   } = usePoll(pollId)
 
-  const handleVote = useCallback((choices: number[]) => {
-    if (!user) {
-      setPendingVote(choices)
-      openLogin()
-      return
-    }
-    castVote(choices).catch((err) => {
-      logger.error('Error casting vote:', err)
-    })
-  }, [user, castVote, openLogin])
-
-  // Auto-submit pending vote after login
-  useEffect(() => {
-    if (!pendingVote || !user || submittingRef.current) return
-    submittingRef.current = true
-    castVote(pendingVote)
-      .catch((err) => { logger.error('Error casting pending vote:', err) })
-      .finally(() => {
-        setPendingVote(null)
-        submittingRef.current = false
-      })
-  }, [pendingVote, user, castVote])
+  const handleVote = useVoteWithLogin(castVote)
 
   const handleShare = useCallback(() => {
     const url = window.location.href

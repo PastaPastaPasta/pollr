@@ -49,7 +49,7 @@ class PollService extends BaseDocumentService<PollDocument> {
       options.push(raw);
     }
 
-    const question = (data.question ?? doc.question) as string;
+    const question = data.question ?? doc.question;
 
     return {
       $id: identifierToBase58(doc.$id || doc.id) || (doc.$id || doc.id) as string,
