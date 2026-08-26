@@ -13,9 +13,12 @@ import { isPollClosed, truncateId } from '@/lib/utils'
 import { CheckCircle2, Lock } from 'lucide-react'
 import type { PollDocument } from '@/lib/services/poll-service'
 
-function voteCountLabel(totalVotes: number, isClosed: boolean): string {
+function voteCountLabel(totalVotes: number, isClosed: boolean, multiChoice: boolean): string {
   if (totalVotes > 0) {
-    return `${totalVotes} vote${totalVotes === 1 ? '' : 's'}`
+    // A multi-choice poll stores one document per selection, so the total counts selections
+    // rather than voters. Name it accordingly instead of implying a headcount.
+    const noun = multiChoice ? 'selection' : 'vote'
+    return `${totalVotes} ${noun}${totalVotes === 1 ? '' : 's'}`
   }
   return isClosed ? 'No votes' : 'Be the first to vote!'
 }
@@ -46,11 +49,18 @@ export function PollCard({
 
   const hasVoted = userChoices.length > 0
   const isClosed = isPollClosed(poll)
-  const canVote = isInteractive && !hasVoted && !isClosed
+  // A multi-choice ballot is a sequence of independent writes, so a voter can end up with only
+  // some of their selections recorded. They stay able to add the rest until every option is in;
+  // a single-choice voter is done after one. Re-submitting a recorded choice is idempotent
+  // anyway — Platform rejects it as a duplicate — but there is no reason to invite it.
+  const hasFullBallot = poll.multiChoice
+    ? userChoices.length >= poll.options.length
+    : hasVoted
+  const canVote = isInteractive && !hasFullBallot && !isClosed
   const showResults = totalVotes > 0 || hasVoted || isClosed
 
   const handleOptionChange = (index: number, checked: boolean) => {
-    if (!canVote || isVoting) return
+    if (!canVote || isVoting || userChoices.includes(index)) return
 
     if (!poll.multiChoice) {
       // Single choice votes on click — there is nothing else to confirm.
@@ -121,10 +131,12 @@ export function PollCard({
             text={option}
             voteCount={voteCounts[index] || 0}
             totalVotes={totalVotes}
-            isSelected={hasVoted ? userChoices.includes(index) : draftChoices.includes(index)}
+            isSelected={userChoices.includes(index) || draftChoices.includes(index)}
             isUserPick={userChoices.includes(index)}
             showResults={showResults}
-            disabled={!canVote || isVoting}
+            // An option already on-chain shows checked but cannot be toggled; on a partially
+            // recorded multi-choice ballot the remaining options stay selectable.
+            disabled={!canVote || isVoting || userChoices.includes(index)}
             multiChoice={poll.multiChoice}
             onChange={handleOptionChange}
           />
@@ -134,7 +146,7 @@ export function PollCard({
       <CardFooter className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {voteCountLabel(totalVotes, isClosed)}
+            {voteCountLabel(totalVotes, isClosed, poll.multiChoice)}
           </span>
           {endsLabel && (
             <span className="text-xs text-gray-400 dark:text-gray-500">

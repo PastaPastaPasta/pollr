@@ -6,6 +6,8 @@ import { voteService, applyCastVoteResult, type PollTally } from '@/lib/services
 import { useAuth } from '@/contexts/auth-context';
 import { useSdk } from '@/contexts/sdk-context';
 import { logger } from '@/lib/logger';
+import { isPollClosed } from '@/lib/utils';
+import { reportCastVote } from '@/lib/vote-feedback';
 import toast from 'react-hot-toast';
 
 interface UsePollResult extends PollTally {
@@ -94,23 +96,27 @@ export function usePoll(pollId: string | null): UsePollResult {
   const castVote = useCallback(async (choices: number[]): Promise<void> => {
     if (!poll || !user) return;
 
+    // The card hides the vote UI on a closed poll, but a tab left open past the deadline still
+    // holds a stale render. Re-check against the clock at submit time.
+    if (isPollClosed(poll)) {
+      toast.error('This poll is closed');
+      return;
+    }
+
     try {
       setIsVoting(true);
       const result = await voteService.castVote(
         user.identityId,
         poll.$id,
         poll.$ownerId,
-        choices
+        choices,
+        poll.endsAt
       );
 
       // Optimistic update using a functional updater to avoid a stale closure.
       setTally(prev => applyCastVoteResult(prev, result));
 
-      if (result.alreadyVoted.length === result.choices.length) {
-        toast('You had already voted on this poll');
-      } else {
-        toast.success('Vote submitted!');
-      }
+      reportCastVote(result);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to cast vote');
       logger.error('Error casting vote:', err);

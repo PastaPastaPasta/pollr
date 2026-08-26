@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Plus, BarChart3 } from 'lucide-react'
@@ -14,20 +14,26 @@ import { useVoteWithLogin } from '@/hooks/use-vote-with-login'
 import { Spinner } from '@/components/ui/spinner'
 import { voteService, applyCastVoteResult, type PollTally } from '@/lib/services/vote-service'
 import { logger } from '@/lib/logger'
+import { isPollClosed } from '@/lib/utils'
+import { reportCastVote } from '@/lib/vote-feedback'
 import toast from 'react-hot-toast'
 import type { EnrichedPoll } from '@/lib/services/poll-metadata-service'
 
 function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
   const { user } = useAuth()
   const [isVoting, setIsVoting] = useState(false)
+  const isVotingRef = useRef(false)
   const [tally, setTally] = useState<PollTally>({
     voteCounts: enrichedPoll.voteCounts,
     totalVotes: enrichedPoll.totalVotes,
     userChoices: enrichedPoll.userChoices,
   })
 
-  // Sync enriched data when it refreshes (e.g. after login triggers re-fetch)
+  // Sync enriched data when it refreshes (e.g. after login triggers re-fetch).
+  // Skipped mid-ballot: that refetch predates the vote and would erase the optimistic update.
+  // A ref rather than a dependency, so finishing the vote does not re-run this with stale props.
   useEffect(() => {
+    if (isVotingRef.current) return
     setTally({
       voteCounts: enrichedPoll.voteCounts,
       totalVotes: enrichedPoll.totalVotes,
@@ -47,23 +53,30 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
 
   const castVote = useCallback(async (choices: number[]) => {
     if (!user) return
+
+    const poll = enrichedPoll.poll
+    // The card hides the vote UI on a closed poll, but a tab left open past the deadline still
+    // holds a stale render. Re-check against the clock at submit time.
+    if (isPollClosed(poll)) {
+      toast.error('This poll is closed')
+      return
+    }
+
     try {
       setIsVoting(true)
+      isVotingRef.current = true
       const result = await voteService.castVote(
         user.identityId,
-        enrichedPoll.poll.$id,
-        enrichedPoll.poll.$ownerId,
-        choices
+        poll.$id,
+        poll.$ownerId,
+        choices,
+        poll.endsAt
       )
 
       // Optimistic update using a functional updater to avoid a stale closure.
       setTally(prev => applyCastVoteResult(prev, result))
 
-      if (result.alreadyVoted.length === result.choices.length) {
-        toast('You had already voted on this poll')
-      } else {
-        toast.success('Vote submitted!')
-      }
+      reportCastVote(result)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to cast vote')
       logger.error('Error casting vote:', err)
@@ -71,6 +84,7 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
       await resync()
     } finally {
       setIsVoting(false)
+      isVotingRef.current = false
     }
   }, [user, enrichedPoll.poll, resync])
 
