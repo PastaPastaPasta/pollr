@@ -9,21 +9,19 @@
  * is initialized before creating any WASM objects.
  */
 import { getEvoSdk } from './evo-sdk-service';
-import type {
-  IdentitySigner,
-  IdentityPublicKey,
-} from '@dashevo/wasm-sdk';
 import type { IdentityPublicKey as IdentityPublicKeyType } from './identity-service';
-type WasmIdentityPublicKey = InstanceType<typeof IdentityPublicKey>;
+import type {
+  IdentityPublicKey as WasmIdentityPublicKeyClass,
+  IdentitySigner as WasmIdentitySignerClass,
+} from '@dashevo/wasm-sdk';
 
-/**
- * Get WASM classes from evo-sdk after WASM is initialized.
- * Must import from @dashevo/evo-sdk (not @dashevo/wasm-sdk) to share WASM bindings.
- */
-async function getWasmClasses() {
+type WasmIdentityPublicKey = InstanceType<typeof WasmIdentityPublicKeyClass>;
+type WasmIdentitySigner = InstanceType<typeof WasmIdentitySignerClass>;
+
+/** Load the runtime classes only after EvoSDK has initialized the shared WASM module. */
+async function getWasmClasses(): Promise<typeof import('@dashevo/wasm-sdk')> {
   await getEvoSdk();
-  const wasm = await import('@dashevo/evo-sdk') as unknown as typeof import('@dashevo/wasm-sdk');
-  return wasm;
+  return await import('@dashevo/evo-sdk') as unknown as typeof import('@dashevo/wasm-sdk');
 }
 
 /**
@@ -75,10 +73,15 @@ class SignerService {
    */
   async createSigner(
     privateKeyWif: string
-  ): Promise<IdentitySigner> {
+  ): Promise<WasmIdentitySigner> {
     const { IdentitySigner } = await getWasmClasses();
+
+    // Create a new signer instance using imported class
     const signer = new IdentitySigner();
+
+    // Add key directly from WIF (the signer has a convenience method for this)
     signer.addKeyFromWif(privateKeyWif);
+
     return signer;
   }
 
@@ -92,11 +95,17 @@ class SignerService {
   async createSignerFromHex(
     privateKeyHex: string,
     network: 'testnet' | 'mainnet' = 'testnet'
-  ): Promise<IdentitySigner> {
+  ): Promise<WasmIdentitySigner> {
     const { IdentitySigner, PrivateKey } = await getWasmClasses();
+
+    // Create a new signer instance using imported class
     const signer = new IdentitySigner();
+
+    // Create PrivateKey from hex and add to signer
+    // Note: fromHex requires network parameter
     const privateKey = PrivateKey.fromHex(privateKeyHex, network);
     signer.addKey(privateKey);
+
     return signer;
   }
 
@@ -111,11 +120,13 @@ class SignerService {
    */
   async createIdentityPublicKey(
     keyData: IdentityPublicKeyType
-  ): Promise<IdentityPublicKey> {
-    const { IdentityPublicKey } = await getWasmClasses();
+  ): Promise<WasmIdentityPublicKey> {
+    const { IdentityPublicKey, PlatformVersion } = await getWasmClasses();
 
+    // Normalize the key data to match the expected JSON format
+    // EvoSDK uses camelCase fields and requires $formatVersion.
     const normalizedKeyData = {
-      $version: '0',
+      $formatVersion: '0',
       id: keyData.id,
       type: keyData.type,
       purpose: keyData.purpose,
@@ -126,7 +137,13 @@ class SignerService {
       contractBounds: keyData.contractBounds as object | undefined,
     };
 
-    const identityKey = IdentityPublicKey.fromJSON(normalizedKeyData as Parameters<typeof IdentityPublicKey.fromJSON>[0]);
+    // Use the fromJSON method which handles proper deserialization
+    // Cast needed: TS can't narrow the ternary on data to string
+    const identityKey = IdentityPublicKey.fromJSON(
+      normalizedKeyData as Parameters<typeof IdentityPublicKey.fromJSON>[0],
+      PlatformVersion.current()
+    );
+
     return identityKey;
   }
 
@@ -148,7 +165,7 @@ class SignerService {
     keyId?: number
   ): IdentityPublicKeyType | null {
     // Filter out disabled keys
-    // v3.1: SDK consistently returns camelCase — snake_case fallbacks removed
+    // EvoSDK returns camelCase identity key fields.
     const activeKeys = publicKeys.filter(k => !k.disabledAt);
 
     if (keyId !== undefined) {
@@ -168,7 +185,7 @@ class SignerService {
     const authKeys = activeKeys.filter(k => k.purpose === KeyPurpose.AUTHENTICATION);
 
     // Sort by security level (lower = more secure) and find first that meets requirement
-    // v3.1: SDK consistently returns camelCase — snake_case fallbacks removed
+    // EvoSDK returns camelCase identity key fields.
     const sortedKeys = authKeys.sort((a, b) => {
       const levelA = a.securityLevel ?? SecurityLevel.MEDIUM;
       const levelB = b.securityLevel ?? SecurityLevel.MEDIUM;
@@ -199,8 +216,8 @@ class SignerService {
     privateKeyWif: string,
     keyData: IdentityPublicKeyType
   ): Promise<{
-    signer: IdentitySigner;
-    identityKey: IdentityPublicKey;
+    signer: WasmIdentitySigner;
+    identityKey: WasmIdentityPublicKey;
   }> {
     const [signer, identityKey] = await Promise.all([
       this.createSigner(privateKeyWif),
@@ -227,7 +244,7 @@ class SignerService {
     privateKeyWif: string,
     wasmKey: WasmIdentityPublicKey
   ): Promise<{
-    signer: IdentitySigner;
+    signer: WasmIdentitySigner;
     identityKey: WasmIdentityPublicKey;
   }> {
     const signer = await this.createSigner(privateKeyWif);

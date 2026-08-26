@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getEvoSdk } from './evo-sdk-service';
 import { DPNS_CONTRACT_ID, DPNS_DOCUMENT_TYPE } from '../constants';
-import { identifierToBase58 } from './sdk-helpers';
+import { documentToPlainObject, identifierToBase58 } from './sdk-helpers';
 
 /**
  * Extract documents array from SDK response (handles Map, Array, and object formats)
@@ -10,25 +10,23 @@ function extractDocuments(response: unknown): Record<string, unknown>[] {
   if (response instanceof Map) {
     return Array.from(response.values())
       .filter(Boolean)
-      .map((doc: unknown) => {
-        const d = doc as { toJSON?: () => unknown };
-        return (typeof d.toJSON === 'function' ? d.toJSON() : doc) as Record<string, unknown>;
-      });
+      .map(documentToPlainObject);
   }
   if (Array.isArray(response)) {
-    return response.map((doc: unknown) => {
-      const d = doc as { toJSON?: () => unknown };
-      return (typeof d.toJSON === 'function' ? d.toJSON() : doc) as Record<string, unknown>;
-    });
+    return response.map(documentToPlainObject);
+  }
+  const maybeDocument = response as { toObject?: () => unknown };
+  if (typeof maybeDocument.toObject === 'function') {
+    return [documentToPlainObject(response)];
   }
   const respObj = response as { documents?: unknown[]; toJSON?: () => unknown };
   if (respObj?.documents) {
-    return respObj.documents as Record<string, unknown>[];
+    return respObj.documents.map(documentToPlainObject);
   }
   if (respObj?.toJSON) {
     const json = respObj.toJSON() as { documents?: unknown[] } | unknown[];
-    if (Array.isArray(json)) return json as Record<string, unknown>[];
-    return (json as { documents?: unknown[] }).documents as Record<string, unknown>[] || [];
+    if (Array.isArray(json)) return json.map(documentToPlainObject);
+    return ((json as { documents?: unknown[] }).documents || []).map(documentToPlainObject);
   }
   return [];
 }
@@ -54,7 +52,7 @@ class DpnsService {
     try {
       const sdk = await getEvoSdk();
 
-      // Try the dedicated DPNS usernames function first (v3 SDK returns string[] directly)
+      // Try the dedicated DPNS usernames function first.
       try {
         const usernames = await sdk.dpns.usernames({ identityId, limit: 20 });
         if (usernames && usernames.length > 0) {
@@ -116,6 +114,11 @@ class DpnsService {
    * Batch resolve usernames for multiple identity IDs (reverse lookup)
    * Uses 'in' operator for efficient single-query resolution
    * Selects the "best" username for identities with multiple names (contested first, then shortest, then alphabetically)
+   *
+   * TODO: This query uses 'in' clause which doesn't support reliable pagination.
+   * The SDK returns incomplete results when subtrees are empty but still count against the limit.
+   * Once SDK provides better 'in' query support (e.g., a flag indicating result completeness),
+   * implement pagination here to handle cases where results exceed the limit.
    */
   async resolveUsernamesBatch(identityIds: string[]): Promise<Map<string, string | null>> {
     const results = new Map<string, string | null>();
@@ -252,7 +255,7 @@ class DpnsService {
 
       const sdk = await getEvoSdk();
 
-      // Try native resolution first using EvoSDK facade (v3 SDK returns string directly)
+      // Try native resolution first using the EvoSDK facade.
       try {
         if (sdk.dpns?.resolveName) {
           const identityId = await sdk.dpns.resolveName(normalizedUsername);
