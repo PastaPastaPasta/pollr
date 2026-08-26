@@ -34,10 +34,19 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
   // A ref rather than a dependency, so finishing the vote does not re-run this with stale props.
   useEffect(() => {
     if (isVotingRef.current) return
-    setTally({
-      voteCounts: enrichedPoll.voteCounts,
-      totalVotes: enrichedPoll.totalVotes,
-      userChoices: enrichedPoll.userChoices,
+    setTally((current) => {
+      // A refetch started before a ballot can resolve after it. Votes are immutable in this
+      // app, so a snapshot missing choices we already hold locally predates the last ballot —
+      // applying it would erase the optimistic update and re-enable a recorded choice.
+      const regressed = current.userChoices.some(
+        (choice) => !enrichedPoll.userChoices.includes(choice)
+      )
+      if (regressed) return current
+      return {
+        voteCounts: enrichedPoll.voteCounts,
+        totalVotes: enrichedPoll.totalVotes,
+        userChoices: enrichedPoll.userChoices,
+      }
     })
   }, [enrichedPoll.userChoices, enrichedPoll.voteCounts, enrichedPoll.totalVotes])
 

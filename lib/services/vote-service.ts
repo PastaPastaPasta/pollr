@@ -323,7 +323,7 @@ class VoteService extends BaseDocumentService<VoteDocument> {
   async getVotesForPoll(pollId: string): Promise<VoteDocument[]> {
     const sdk = await getEvoSdk();
 
-    const { documents } = await paginateFetchAll(
+    const { documents, reachedLimit } = await paginateFetchAll(
       sdk,
       () => ({
         dataContractId: this.contractId,
@@ -333,6 +333,11 @@ class VoteService extends BaseDocumentService<VoteDocument> {
       }),
       (doc) => this.transformDocument(doc)
     );
+
+    if (reachedLimit) {
+      // A tally built from this list undercounts; say so instead of presenting it as complete.
+      logger.warn(`VoteService: vote scan for poll ${pollId} hit the pagination cap — results are truncated`);
+    }
 
     return documents;
   }

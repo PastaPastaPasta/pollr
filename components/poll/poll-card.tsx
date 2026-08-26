@@ -74,9 +74,13 @@ export function PollCard({
     )
   }
 
+  // Choices already on-chain stay in draftChoices after a partial ballot; sending them
+  // again would just burn a state transition on a guaranteed duplicate rejection.
+  const pendingDraftChoices = draftChoices.filter((index) => !userChoices.includes(index))
+
   const handleVote = () => {
-    if (draftChoices.length > 0 && onVote) {
-      onVote(draftChoices)
+    if (pendingDraftChoices.length > 0 && onVote) {
+      onVote(pendingDraftChoices)
     }
   }
 
@@ -165,7 +169,7 @@ export function PollCard({
           <Button
             size="sm"
             onClick={handleVote}
-            disabled={draftChoices.length === 0 || isVoting}
+            disabled={pendingDraftChoices.length === 0 || isVoting}
           >
             {isVoting ? (
               <span className="flex items-center gap-2">
