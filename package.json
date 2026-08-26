@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dashevo/evo-sdk": "3.1.0-dev.1",
+    "@dashevo/evo-sdk": "4.2.0-dev.1",
     "@noble/hashes": "^2.2.0",
     "@noble/secp256k1": "^3.1.0",
     "@radix-ui/react-checkbox": "^1.0.4",

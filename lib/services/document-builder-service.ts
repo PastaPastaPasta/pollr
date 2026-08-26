@@ -5,33 +5,84 @@
  * for use with the new typed state transition APIs in @dashevo/evo-sdk
  *
  * The new API requires Document WASM objects instead of plain data objects.
+ * Binary properties on this path should stay as `Uint8Array`; this layer does not convert them
+ * into JSON-style `number[]`.
  *
- * IMPORTANT: We import the Document class from @dashevo/evo-sdk which re-exports
- * from the shared @dashevo/wasm-sdk module. By calling getEvoSdk() first, we ensure
+ * IMPORTANT: We load the Document class from @dashevo/evo-sdk, which re-exports
+ * the shared @dashevo/wasm-sdk module. By calling getEvoSdk() first, we ensure
  * the WASM module is initialized before creating any Document objects.
+ *
+ * BINARY FIELDS: documents are assembled with `Document.fromObject`, never with
+ * `new Document({ properties })`. The constructor converts its `properties` through JSON
+ * (`Uint8Array` → array of numbers), and since wasm-sdk 4.1 those arrays stay
+ * `Value::Array` of `Value::U64` instead of collapsing back into `Value::Bytes`. Drive then
+ * rejects the write with "structure error: not an array of bytes", which breaks every
+ * document type with a byteArray/identifier field. `fromObject` uses the byte-preserving
+ * converter, so `Uint8Array` properties survive as `Value::Bytes`.
  */
 import { getEvoSdk } from './evo-sdk-service';
-import type { Document } from '@dashevo/wasm-sdk';
+import { documentToPlainObject, identifierToBase58, requireDocumentIdentifierBytes } from './sdk-helpers';
+import type { Document as WasmDocumentClass, DocumentObject } from '@dashevo/wasm-sdk';
+import bs58 from 'bs58';
 
-/**
- * Ensure WASM module is initialized and return the Document class.
- *
- * IMPORTANT: Document must come from @dashevo/evo-sdk (the bundled entry point)
- * which includes WASM initialization and re-exports all wasm-sdk classes.
- * Importing from @dashevo/wasm-sdk directly creates a separate module instance
- * where start() was never called, causing "document_constructor is not a function".
- */
-async function getDocumentClass(): Promise<typeof Document> {
+type WasmDocument = InstanceType<typeof WasmDocumentClass>;
+
+async function getWasmClasses(): Promise<typeof import('@dashevo/wasm-sdk')> {
   await getEvoSdk();
-  // Dynamic import from evo-sdk to get Document with initialized WASM bindings.
-  // The evo-sdk bundle includes WASM init + re-exports all wasm-sdk symbols.
-  // Type assertion needed because evo-sdk's .d.ts doesn't declare Document,
-  // but the bundled JS does export it.
-  const evoSdk = await import('@dashevo/evo-sdk') as unknown as typeof import('@dashevo/wasm-sdk');
-  return evoSdk.Document;
+  return await import('@dashevo/evo-sdk') as unknown as typeof import('@dashevo/wasm-sdk');
 }
 
+/**
+ * Assemble the canonical tagged object shape `Document.fromObject` expects.
+ *
+ * `$formatVersion` is mandatory on wasm-sdk 4.1+ and ignored by 4.0, and the identifier
+ * fields are passed as raw bytes because that is the one form both accept — 4.0 rejects
+ * base58 strings, and every version rejects `Identifier` instances even though the
+ * generated `DocumentObject` type asks for them (hence the cast below).
+ */
+function toCanonicalDocumentObject(fields: {
+  id: string;
+  ownerId: string;
+  contractId: string;
+  documentTypeName: string;
+  revision: number;
+  entropy?: Uint8Array;
+  data: Record<string, unknown>;
+}): DocumentObject {
+  const canonical: Record<string, unknown> = {
+    $formatVersion: '0',
+    $id: requireDocumentIdentifierBytes(fields.id, 'document id'),
+    $ownerId: requireDocumentIdentifierBytes(fields.ownerId, 'ownerId'),
+    $dataContractId: requireDocumentIdentifierBytes(fields.contractId, 'dataContractId'),
+    $type: fields.documentTypeName,
+    $revision: BigInt(fields.revision),
+    ...(fields.entropy ? { $entropy: fields.entropy } : {}),
+    ...fields.data,
+  };
+
+  return canonical as unknown as DocumentObject;
+}
+
+/**
+ * Build typed documents after the shared WASM module is initialized.
+ */
 class DocumentBuilderService {
+  async generateDocumentIdentity(
+    contractId: string,
+    documentTypeName: string,
+    ownerId: string
+  ): Promise<{ id: string; entropy: Uint8Array }> {
+    const { Document } = await getWasmClasses();
+
+    const entropy = crypto.getRandomValues(new Uint8Array(32));
+    const idBytes = Document.generateId(documentTypeName, ownerId, contractId, entropy);
+
+    return {
+      id: bs58.encode(idBytes),
+      entropy,
+    };
+  }
+
   /**
    * Build a Document object for document creation
    *
@@ -41,26 +92,40 @@ class DocumentBuilderService {
    * @param contractId - The data contract ID
    * @param documentTypeName - The document type name (e.g., 'poll', 'vote')
    * @param ownerId - The identity ID that owns this document
-   * @param data - The document data fields
+   * @param data - The document data fields (`Uint8Array` for binary fields on typed writes)
    * @returns A WASM Document object ready for creation
    */
   async buildDocumentForCreate(
     contractId: string,
     documentTypeName: string,
     ownerId: string,
-    data: Record<string, unknown>
-  ): Promise<Document> {
-    const DocumentClass = await getDocumentClass();
+    data: Record<string, unknown>,
+    options?: {
+      id?: string;
+      entropy?: Uint8Array;
+    }
+  ): Promise<WasmDocument> {
+    const { Document, PlatformVersion } = await getWasmClasses();
 
-    const document = new DocumentClass({
-      properties: data,
-      documentTypeName,
-      dataContractId: contractId,
-      ownerId,
-      revision: BigInt(1),
-    });
+    // The constructor generated missing entropy and derived the id from it; `fromObject`
+    // takes both as given, so fill them in the same way here.
+    const entropy = options?.entropy ?? crypto.getRandomValues(new Uint8Array(32));
+    const id = options?.id ?? bs58.encode(
+      Document.generateId(documentTypeName, ownerId, contractId, entropy)
+    );
 
-    return document;
+    return Document.fromObject(
+      toCanonicalDocumentObject({
+        id,
+        ownerId,
+        contractId,
+        documentTypeName,
+        revision: 1,
+        entropy,
+        data,
+      }),
+      PlatformVersion.current()
+    );
   }
 
   /**
@@ -73,7 +138,7 @@ class DocumentBuilderService {
    * @param documentTypeName - The document type name
    * @param documentId - The existing document's ID
    * @param ownerId - The identity ID that owns this document
-   * @param data - The updated document data fields
+   * @param data - The updated document data fields (`Uint8Array` for binary fields on typed writes)
    * @param newRevision - The new revision number (current revision + 1)
    * @returns A WASM Document object ready for replacement
    */
@@ -84,19 +149,21 @@ class DocumentBuilderService {
     ownerId: string,
     data: Record<string, unknown>,
     newRevision: number
-  ): Promise<Document> {
-    const DocumentClass = await getDocumentClass();
+  ): Promise<WasmDocument> {
+    const { Document, PlatformVersion } = await getWasmClasses();
 
-    const document = new DocumentClass({
-      properties: data,
-      documentTypeName,
-      dataContractId: contractId,
-      ownerId,
-      revision: BigInt(newRevision),
-      id: documentId,
-    });
-
-    return document;
+    // Replacements keep the existing id and carry no entropy — only creates need it.
+    return Document.fromObject(
+      toCanonicalDocumentObject({
+        id: documentId,
+        ownerId,
+        contractId,
+        documentTypeName,
+        revision: newRevision,
+        data,
+      }),
+      PlatformVersion.current()
+    );
   }
 
   /**
@@ -139,10 +206,10 @@ class DocumentBuilderService {
    * @param document - A WASM Document or document-like object
    * @returns Normalized document data with $ prefixed fields
    */
-  normalizeDocumentResponse(document: Document | Record<string, unknown>): Record<string, unknown> {
-    // Check if it's a WASM Document with toJSON method
-    if (document && typeof (document as Document).toJSON === 'function') {
-      return (document as Document).toJSON();
+  normalizeDocumentResponse(document: WasmDocument | Record<string, unknown>): Record<string, unknown> {
+    // Check if it's a WASM Document and extract its JSON-like normalized form.
+    if (document && typeof (document as WasmDocument).toObject === 'function') {
+      return documentToPlainObject(document);
     }
 
     // Handle raw objects - normalize field names
@@ -174,7 +241,7 @@ class DocumentBuilderService {
    * @param document - The WASM Document after creation
    * @returns The document ID as a string
    */
-  getDocumentId(document: Document): string {
+  getDocumentId(document: WasmDocument): string {
     // The document.id property returns an Identifier which can be converted to string
     const id = document.id;
     if (typeof id === 'string') {
@@ -183,9 +250,14 @@ class DocumentBuilderService {
     if (id && typeof (id as { toString?: () => string }).toString === 'function') {
       return (id as { toString: () => string }).toString();
     }
-    // Fallback: try to get from JSON
-    const json = document.toJSON();
-    if (json.$id) return json.$id;
+    // Fallback: convert via toObject() and extract the id field
+    const obj = document.toObject() as { $id?: unknown };
+    if (obj.$id) {
+      const rawId = obj.$id;
+      if (typeof rawId === 'string') return rawId;
+      const base58 = identifierToBase58(rawId);
+      if (base58) return base58;
+    }
     throw new Error('Unable to extract document ID from Document object');
   }
 }

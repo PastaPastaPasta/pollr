@@ -1,37 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getEvoSdk } from './evo-sdk-service';
 import { DPNS_CONTRACT_ID, DPNS_DOCUMENT_TYPE } from '../constants';
-import { identifierToBase58 } from './sdk-helpers';
-
-/**
- * Extract documents array from SDK response (handles Map, Array, and object formats)
- */
-function extractDocuments(response: unknown): Record<string, unknown>[] {
-  if (response instanceof Map) {
-    return Array.from(response.values())
-      .filter(Boolean)
-      .map((doc: unknown) => {
-        const d = doc as { toJSON?: () => unknown };
-        return (typeof d.toJSON === 'function' ? d.toJSON() : doc) as Record<string, unknown>;
-      });
-  }
-  if (Array.isArray(response)) {
-    return response.map((doc: unknown) => {
-      const d = doc as { toJSON?: () => unknown };
-      return (typeof d.toJSON === 'function' ? d.toJSON() : doc) as Record<string, unknown>;
-    });
-  }
-  const respObj = response as { documents?: unknown[]; toJSON?: () => unknown };
-  if (respObj?.documents) {
-    return respObj.documents as Record<string, unknown>[];
-  }
-  if (respObj?.toJSON) {
-    const json = respObj.toJSON() as { documents?: unknown[] } | unknown[];
-    if (Array.isArray(json)) return json as Record<string, unknown>[];
-    return (json as { documents?: unknown[] }).documents as Record<string, unknown>[] || [];
-  }
-  return [];
-}
+import { identifierToBase58, normalizeSDKResponse } from './sdk-helpers';
 
 class DpnsService {
   private cache: Map<string, { value: string; timestamp: number }> = new Map();
@@ -54,7 +24,7 @@ class DpnsService {
     try {
       const sdk = await getEvoSdk();
 
-      // Try the dedicated DPNS usernames function first (v3 SDK returns string[] directly)
+      // Try the dedicated DPNS usernames function first.
       try {
         const usernames = await sdk.dpns.usernames({ identityId, limit: 20 });
         if (usernames && usernames.length > 0) {
@@ -72,7 +42,7 @@ class DpnsService {
         limit: 20
       });
 
-      const documents = extractDocuments(response);
+      const documents = normalizeSDKResponse(response);
       return documents.map((doc) => {
         const data = (doc.data || doc) as Record<string, unknown>;
         return `${data.label}.${data.normalizedParentDomainName}`;
@@ -116,6 +86,11 @@ class DpnsService {
    * Batch resolve usernames for multiple identity IDs (reverse lookup)
    * Uses 'in' operator for efficient single-query resolution
    * Selects the "best" username for identities with multiple names (contested first, then shortest, then alphabetically)
+   *
+   * TODO: This query uses 'in' clause which doesn't support reliable pagination.
+   * The SDK returns incomplete results when subtrees are empty but still count against the limit.
+   * Once SDK provides better 'in' query support (e.g., a flag indicating result completeness),
+   * implement pagination here to handle cases where results exceed the limit.
    */
   async resolveUsernamesBatch(identityIds: string[]): Promise<Map<string, string | null>> {
     const results = new Map<string, string | null>();
@@ -152,7 +127,7 @@ class DpnsService {
         limit: 100
       });
 
-      const documents = extractDocuments(response);
+      const documents = normalizeSDKResponse(response);
 
       // Collect ALL usernames per identity (some users have multiple)
       const usernamesByIdentity = new Map<string, string[]>();
@@ -252,7 +227,7 @@ class DpnsService {
 
       const sdk = await getEvoSdk();
 
-      // Try native resolution first using EvoSDK facade (v3 SDK returns string directly)
+      // Try native resolution first using the EvoSDK facade.
       try {
         if (sdk.dpns?.resolveName) {
           const identityId = await sdk.dpns.resolveName(normalizedUsername);
@@ -281,7 +256,7 @@ class DpnsService {
         limit: 1
       });
 
-      const documents = extractDocuments(response);
+      const documents = normalizeSDKResponse(response);
       if (documents.length > 0) {
         const doc = documents[0];
         const data = (doc.data || doc) as Record<string, unknown>;

@@ -105,24 +105,20 @@ class EvoSdkService {
     if (!this.config || !this.sdk) {
       return;
     }
+    const sdk = this.sdk;
 
     logger.info('EvoSdkService: Preloading contracts in parallel...');
 
     // Build list of contracts to fetch
     const contractsToFetch: Array<{ id: string; name: string }> = [
+      { id: POLLR_CONTRACT_ID, name: 'Pollr' },
       { id: DPNS_CONTRACT_ID, name: 'DPNS' },
     ];
-
-    // Only preload Pollr contract if it's been deployed (not placeholder)
-    if (POLLR_CONTRACT_ID && !POLLR_CONTRACT_ID.includes('TODO')) {
-      contractsToFetch.push({ id: POLLR_CONTRACT_ID, name: 'Pollr' });
-    }
 
     // Fetch all contracts in parallel
     const results = await Promise.allSettled(
       contractsToFetch.map(async ({ id, name }) => {
-        if (!this.sdk) throw new Error('SDK not initialized');
-        const contract = await this.sdk.contracts.fetch(id);
+        const contract = await sdk.contracts.fetch(id);
         if (!contract) {
           throw new Error(`Contract ${name} (${id}) not found on network`);
         }

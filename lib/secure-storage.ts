@@ -1,6 +1,7 @@
 'use client'
 
 import { logger } from '@/lib/logger';
+import { scopedKey } from '@/lib/storage-scope';
 
 /**
  * Secure storage for sensitive data like private keys
@@ -9,8 +10,8 @@ import { logger } from '@/lib/logger';
  * - sessionStorage: Default - isolated per tab, cleared when tab closes
  */
 class SecureStorage {
-  private prefix = 'pollr_secure_'
-  private rememberKey = 'pollr_remember_me'
+  private prefix = scopedKey('pollr_secure_')
+  private rememberKey = scopedKey('pollr_remember_me')
 
   private getKeysWithPrefix(storage: Storage): string[] {
     const keys: string[] = []
@@ -194,6 +195,5 @@ export const isRememberMe = (): boolean => {
 }
 
 export const clearRememberMe = (): void => {
-  if (typeof window === 'undefined') return
-  localStorage.removeItem('pollr_remember_me')
+  secureStorage.setRememberMe(false)
 }

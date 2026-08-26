@@ -15,6 +15,7 @@ import {
 } from '@/lib/crypto/keys'
 import { validateWifNetwork, wifToPrivateKey, type DecodedWif } from '@/lib/crypto/wif'
 import { normalizeBytes } from '@/lib/services/sdk-helpers'
+import { SESSION_STORAGE_KEY } from '@/lib/storage-scope'
 
 export interface AuthUser {
   identityId: string
@@ -36,7 +37,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const SESSION_KEY = 'pollr_session'
+const SESSION_KEY = SESSION_STORAGE_KEY
 const IDENTITY_ID_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{42,46}$/
 
 function isLikelyIdentityId(input: string): boolean {

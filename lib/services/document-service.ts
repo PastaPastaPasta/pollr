@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import { getEvoSdk } from './evo-sdk-service';
 import { stateTransitionService } from './state-transition-service';
 import { POLLR_CONTRACT_ID } from '../constants';
-import { queryDocuments, type QueryDocumentsOptions, type DocumentWhereClause, type DocumentOrderByClause } from './sdk-helpers';
+import { documentToPlainObject, queryDocuments, type QueryDocumentsOptions, type DocumentWhereClause, type DocumentOrderByClause } from './sdk-helpers';
 
 export interface QueryOptions {
   where?: DocumentWhereClause[];
@@ -20,7 +20,7 @@ export interface DocumentResult<T> {
 
 /**
  * Query raw documents through the shared document-service path.
- * This keeps SDK query behavior centralized in one layer.
+ * This keeps the raw `sdk.documents.query(...)` behavior centralized in one layer.
  */
 export async function queryRawDocuments(options: QueryDocumentsOptions): Promise<Record<string, unknown>[]> {
   const sdk = await getEvoSdk();
@@ -39,7 +39,8 @@ export abstract class BaseDocumentService<T> {
   }
 
   /**
-   * Query documents
+   * Query documents through the raw query path.
+   * `where` operands must already use the correct query encoding for each field.
    */
   async query(options: QueryOptions = {}): Promise<DocumentResult<T>> {
     try {
@@ -99,8 +100,8 @@ export abstract class BaseDocumentService<T> {
         return null;
       }
 
-      // Document has toJSON method — cast to Record for transformDocument
-      const docData = (typeof response.toJSON === 'function' ? response.toJSON() : response) as Record<string, unknown>;
+      // Normalize zero-arg toObject() output back to the JSON-like shape Pollr expects.
+      const docData = documentToPlainObject(response);
       const transformed = this.transformDocument(docData);
 
       // Cache the result
@@ -117,9 +118,21 @@ export abstract class BaseDocumentService<T> {
   }
 
   /**
-   * Create a new document
+   * Create a new document through the typed `Document` path.
+   * Binary fields should already be `Uint8Array` when they reach this layer.
    */
   async create(ownerId: string, data: Record<string, unknown>): Promise<T> {
+    return this.createWithOptions(ownerId, data)
+  }
+
+  async createWithOptions(
+    ownerId: string,
+    data: Record<string, unknown>,
+    options?: {
+      documentId?: string;
+      entropy?: Uint8Array;
+    }
+  ): Promise<T> {
     try {
       logger.info(`Creating ${this.documentType} document:`, data);
 
@@ -127,7 +140,8 @@ export abstract class BaseDocumentService<T> {
         this.contractId,
         this.documentType,
         ownerId,
-        data
+        data,
+        options
       );
 
       if (!result.success || !result.document) {
@@ -150,13 +164,12 @@ export abstract class BaseDocumentService<T> {
    * Subclasses can override for custom extraction logic.
    */
   protected extractContentFields(doc: T): Record<string, unknown> {
-    const systemFields = new Set([
-      'id', 'ownerId', 'createdAt', 'updatedAt',
-      '$id', '$ownerId', '$createdAt', '$updatedAt', '$revision', '$type', 'revision',
-    ]);
+    const systemFields = new Set(['id', 'ownerId', 'createdAt', 'updatedAt', 'revision']);
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(doc as Record<string, unknown>)) {
-      if (!systemFields.has(key) && value !== undefined) {
+      // Every platform system field is `$`-prefixed ($id, $revision, $formatVersion, …) and
+      // no contract declares a `$` property, so the prefix is enough to filter them all.
+      if (!key.startsWith('$') && !systemFields.has(key) && value !== undefined) {
         result[key] = value;
       }
     }
@@ -164,7 +177,8 @@ export abstract class BaseDocumentService<T> {
   }
 
   /**
-   * Update a document
+   * Update a document through the typed `Document` replace path.
+   * Binary fields should already be `Uint8Array` when they reach this layer.
    */
   async update(documentId: string, ownerId: string, data: Record<string, unknown>): Promise<T> {
     try {

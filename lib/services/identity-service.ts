@@ -89,7 +89,7 @@ class IdentityService {
       logger.info('Public keys from identity:', identity.publicKeys);
 
       // Normalize public keys to ensure all fields are present
-      // v3.1: SDK consistently returns camelCase — snake_case fallbacks removed
+      // EvoSDK returns camelCase identity key fields.
       const rawPublicKeys = identity.publicKeys || [];
       const normalizedPublicKeys: IdentityPublicKey[] = rawPublicKeys.map((key: IdentityPublicKey) => ({
         id: key.id,
@@ -104,9 +104,9 @@ class IdentityService {
 
       const identityInfo: IdentityInfo = {
         id: identity.id || identityId,
-        balance: identity.balance || 0,
+        balance: Number(identity.balance ?? 0),
         publicKeys: normalizedPublicKeys,
-        revision: identity.revision || 0
+        revision: Number(identity.revision ?? 0)
       };
 
       // Cache the result
@@ -135,7 +135,7 @@ class IdentityService {
 
       const sdk = await getEvoSdk();
 
-      // Fetch balance using EvoSDK facade (v3.1 SDK returns bigint | undefined)
+      // Fetch balance using the EvoSDK facade (bigint | undefined).
       logger.info(`Fetching balance for: ${identityId}`);
       const balanceResponse = await sdk.identities.balance(identityId);
 
@@ -165,8 +165,8 @@ class IdentityService {
       return balanceInfo;
     } catch (error) {
       logger.error('Error fetching balance:', error);
-      // Return zero balance on error
-      return { confirmed: 0, total: 0 };
+      // Rethrow so callers can distinguish an unknown balance from a real zero.
+      throw error;
     }
   }
 

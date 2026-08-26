@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { BaseDocumentService } from './document-service';
-import { stringToIdentifierBytes, identifierToBase58 } from './sdk-helpers';
+import { identifierStringToDocumentBytes, identifierToBase58 } from './sdk-helpers';
 import { paginateFetchAll } from './pagination-utils';
 import { POLLR_CONTRACT_ID } from '@/lib/constants';
 
@@ -31,7 +31,7 @@ class VoteService extends BaseDocumentService<VoteDocument> {
 
     // Decode selectedOptions from byte array (each byte = one option index)
     // SDK may return as Uint8Array, number[], or base64 string
-    // Strip 0xFF padding bytes added during creation (see castVote workaround)
+    // Strip 0xFF padding bytes from votes created with the historical write workaround.
     const rawSelectedOptions = data.selectedOptions || doc.selectedOptions;
     let rawBytes: number[] = [];
     if (rawSelectedOptions instanceof Uint8Array) {
@@ -69,19 +69,10 @@ class VoteService extends BaseDocumentService<VoteDocument> {
       throw new Error('At least one option must be selected');
     }
 
-    // WORKAROUND: Platform's JsonValue→Value conversion uses a heuristic that
-    // only treats arrays as bytes if they have >= 10 elements (see rs-platform-value
-    // converter/serde_json.rs line 225: "if len >= 10"). Pad to 10 bytes with 0xFF
-    // (value 255, which is never a valid option index 0-9) so the array is recognized
-    // as bytes rather than Value::Array.
-    const padded = new Array(10).fill(0xFF) as number[];
-    for (let i = 0; i < selectedOptions.length; i++) {
-      padded[i] = selectedOptions[i] & 0xFF;
-    }
     return this.create(ownerId, {
-      pollId: stringToIdentifierBytes(pollId),
-      pollOwnerId: stringToIdentifierBytes(pollOwnerId),
-      selectedOptions: padded,
+      pollId: identifierStringToDocumentBytes(pollId),
+      pollOwnerId: identifierStringToDocumentBytes(pollOwnerId),
+      selectedOptions: Uint8Array.from(selectedOptions, option => option & 0xFF),
     });
   }
 
