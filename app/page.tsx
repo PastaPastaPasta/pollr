@@ -38,9 +38,12 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
       // A refetch started before a ballot can resolve after it. Votes are immutable in this
       // app, so a snapshot missing choices we already hold locally predates the last ballot —
       // applying it would erase the optimistic update and re-enable a recorded choice.
-      const regressed = current.userChoices.some(
-        (choice) => !enrichedPoll.userChoices.includes(choice)
-      )
+      // An incoming null is "couldn't read it this time", which is the same kind of regression
+      // against choices we already know are on-chain.
+      const known = current.userChoices
+      const incoming = enrichedPoll.userChoices
+      const regressed =
+        known !== null && (incoming === null || known.some((choice) => !incoming.includes(choice)))
       if (regressed) return current
       return {
         voteCounts: enrichedPoll.voteCounts,
@@ -54,7 +57,7 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
   const resync = useCallback(async () => {
     const poll = enrichedPoll.poll
     try {
-      setTally(await voteService.getPollTally(poll.$id, poll.options.length, user?.identityId))
+      setTally(await voteService.getPollTally(poll, user?.identityId))
     } catch (err) {
       logger.error(`Failed to resync poll ${poll.$id}:`, err)
     }
@@ -74,13 +77,7 @@ function HomePollCard({ enrichedPoll }: { enrichedPoll: EnrichedPoll }) {
     try {
       setIsVoting(true)
       isVotingRef.current = true
-      const result = await voteService.castVote(
-        user.identityId,
-        poll.$id,
-        poll.$ownerId,
-        choices,
-        poll.endsAt
-      )
+      const result = await voteService.castVote(user.identityId, poll, choices)
 
       // Optimistic update using a functional updater to avoid a stale closure.
       setTally(prev => applyCastVoteResult(prev, result))

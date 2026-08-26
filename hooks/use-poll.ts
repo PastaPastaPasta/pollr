@@ -20,8 +20,14 @@ interface UsePollResult extends PollTally {
   refetch: () => Promise<void>;
 }
 
-function emptyTally(): PollTally {
-  return { voteCounts: [], totalVotes: 0, userChoices: [] };
+/**
+ * The tally before anything has been read, and after a failed read.
+ *
+ * Null rather than zero throughout: neither state is knowledge that a poll has no votes, and an
+ * empty `userChoices` would reopen a ballot the voter may already have cast.
+ */
+function unknownTally(): PollTally {
+  return { voteCounts: null, totalVotes: null, userChoices: null };
 }
 
 export function usePoll(pollId: string | null): UsePollResult {
@@ -29,7 +35,7 @@ export function usePoll(pollId: string | null): UsePollResult {
   const { isReady } = useSdk();
   const [poll, setPoll] = useState<PollDocument | null>(null);
   const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
-  const [tally, setTally] = useState<PollTally>(emptyTally);
+  const [tally, setTally] = useState<PollTally>(unknownTally);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
@@ -37,7 +43,7 @@ export function usePoll(pollId: string | null): UsePollResult {
   const resetPollState = useCallback(() => {
     setPoll(null);
     setOwnerUsername(null);
-    setTally(emptyTally());
+    setTally(unknownTally());
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -67,7 +73,7 @@ export function usePoll(pollId: string | null): UsePollResult {
 
       const [username, fetchedTally] = await Promise.all([
         dpnsService.resolveUsername(fetchedPoll.$ownerId),
-        voteService.getPollTally(pollId, fetchedPoll.options.length, user?.identityId),
+        voteService.getPollTally(fetchedPoll, user?.identityId),
       ]);
 
       setPoll(fetchedPoll);
@@ -105,13 +111,7 @@ export function usePoll(pollId: string | null): UsePollResult {
 
     try {
       setIsVoting(true);
-      const result = await voteService.castVote(
-        user.identityId,
-        poll.$id,
-        poll.$ownerId,
-        choices,
-        poll.endsAt
-      );
+      const result = await voteService.castVote(user.identityId, poll, choices);
 
       // Optimistic update using a functional updater to avoid a stale closure.
       setTally(prev => applyCastVoteResult(prev, result));

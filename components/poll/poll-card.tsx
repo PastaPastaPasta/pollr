@@ -13,7 +13,9 @@ import { isPollClosed, truncateId } from '@/lib/utils'
 import { CheckCircle2, Lock } from 'lucide-react'
 import type { PollDocument } from '@/lib/services/poll-service'
 
-function voteCountLabel(totalVotes: number, isClosed: boolean, multiChoice: boolean): string {
+function voteCountLabel(totalVotes: number | null, isClosed: boolean, multiChoice: boolean): string {
+  // Not a headcount we have and happens to be zero — a number we could not read.
+  if (totalVotes === null) return 'Vote count unavailable'
   if (totalVotes > 0) {
     // A multi-choice poll stores one document per selection, so the total counts selections
     // rather than voters. Name it accordingly instead of implying a headcount.
@@ -25,10 +27,12 @@ function voteCountLabel(totalVotes: number, isClosed: boolean, multiChoice: bool
 
 interface PollCardProps {
   poll: PollDocument
-  voteCounts: number[]
-  totalVotes: number
-  /** Option indices the signed-in user has already voted for. */
-  userChoices?: number[]
+  /** Per-option counts, or null when the tally could not be read. Null is not zero. */
+  voteCounts: number[] | null
+  /** Grand total, or null when the tally could not be read. */
+  totalVotes: number | null
+  /** Option indices the signed-in user has already voted for; null when the lookup failed. */
+  userChoices?: number[] | null
   onVote?: (choices: number[]) => void
   isVoting?: boolean
   isInteractive?: boolean
@@ -47,20 +51,27 @@ export function PollCard({
 }: PollCardProps) {
   const [draftChoices, setDraftChoices] = useState<number[]>([])
 
-  const hasVoted = userChoices.length > 0
+  // null means "we could not find out", which is not the same as "none" — treat the ballot as
+  // unknown rather than open, since on a single-choice poll Platform will reject a second one.
+  const ownChoicesKnown = userChoices !== null
+  const ownChoices = userChoices ?? []
+  const resultsAvailable = voteCounts !== null
+
+  const hasVoted = ownChoices.length > 0
   const isClosed = isPollClosed(poll)
   // A multi-choice ballot is a sequence of independent writes, so a voter can end up with only
   // some of their selections recorded. They stay able to add the rest until every option is in;
   // a single-choice voter is done after one. Re-submitting a recorded choice is idempotent
   // anyway — Platform rejects it as a duplicate — but there is no reason to invite it.
   const hasFullBallot = poll.multiChoice
-    ? userChoices.length >= poll.options.length
+    ? ownChoices.length >= poll.options.length
     : hasVoted
-  const canVote = isInteractive && !hasFullBallot && !isClosed
-  const showResults = totalVotes > 0 || hasVoted || isClosed
+  const canVote = isInteractive && ownChoicesKnown && !hasFullBallot && !isClosed
+  // Result bars need real numbers behind them; without a tally the options render plain.
+  const showResults = resultsAvailable && ((totalVotes ?? 0) > 0 || hasVoted || isClosed)
 
   const handleOptionChange = (index: number, checked: boolean) => {
-    if (!canVote || isVoting || userChoices.includes(index)) return
+    if (!canVote || isVoting || ownChoices.includes(index)) return
 
     if (!poll.multiChoice) {
       // Single choice votes on click — there is nothing else to confirm.
@@ -74,9 +85,14 @@ export function PollCard({
     )
   }
 
-  // Choices already on-chain stay in draftChoices after a partial ballot; sending them
+  // On a single-choice poll the recorded ballot is the whole truth once it exists. A duplicate
+  // rejection reports the choice already on-chain, which need not be the one just clicked, so
+  // the click must not stay highlighted next to it.
+  const activeDrafts = !poll.multiChoice && hasVoted ? [] : draftChoices
+
+  // Choices already on-chain stay in the draft after a partial ballot; sending them
   // again would just burn a state transition on a guaranteed duplicate rejection.
-  const pendingDraftChoices = draftChoices.filter((index) => !userChoices.includes(index))
+  const pendingDraftChoices = activeDrafts.filter((index) => !ownChoices.includes(index))
 
   const handleVote = () => {
     if (pendingDraftChoices.length > 0 && onVote) {
@@ -133,14 +149,14 @@ export function PollCard({
             key={index}
             index={index}
             text={option}
-            voteCount={voteCounts[index] || 0}
-            totalVotes={totalVotes}
-            isSelected={userChoices.includes(index) || draftChoices.includes(index)}
-            isUserPick={userChoices.includes(index)}
+            voteCount={voteCounts?.[index] ?? 0}
+            totalVotes={totalVotes ?? 0}
+            isSelected={ownChoices.includes(index) || activeDrafts.includes(index)}
+            isUserPick={ownChoices.includes(index)}
             showResults={showResults}
             // An option already on-chain shows checked but cannot be toggled; on a partially
             // recorded multi-choice ballot the remaining options stay selectable.
-            disabled={!canVote || isVoting || userChoices.includes(index)}
+            disabled={!canVote || isVoting || ownChoices.includes(index)}
             multiChoice={poll.multiChoice}
             onChange={handleOptionChange}
           />
@@ -161,6 +177,11 @@ export function PollCard({
             <span className="inline-flex items-center gap-1 text-xs font-medium text-pollr-600 dark:text-pollr-400">
               <CheckCircle2 className="h-3.5 w-3.5" />
               You voted
+            </span>
+          )}
+          {!ownChoicesKnown && !isClosed && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              Couldn&apos;t check whether you&apos;ve already voted
             </span>
           )}
         </div>
