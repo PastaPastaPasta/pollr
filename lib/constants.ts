@@ -26,3 +26,9 @@ export const DOCUMENT_TYPES = {
   POLL: 'poll',
   VOTE: 'vote',
 } as const
+
+// Poll schema limits, mirroring contracts/pollr-contract-v2.json
+export const MIN_POLL_OPTIONS = 2
+export const MAX_POLL_OPTIONS = 10
+export const MAX_QUESTION_LENGTH = 512
+export const MAX_OPTION_LENGTH = 100

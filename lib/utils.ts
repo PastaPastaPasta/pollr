@@ -12,24 +12,11 @@ export function truncateId(id: string, startChars = 8, endChars = 6): string {
 }
 
 /**
- * Compute per-option vote counts from an array of votes.
- * Returns { counts, total } where counts[i] = number of votes for option i.
+ * Whether a poll's advisory close time has passed.
+ *
+ * `endsAt` is not enforced on-chain — Platform will still accept a late vote — so the client
+ * hides the vote UI once it elapses and shows results only.
  */
-export function computeVoteCounts(
-  votes: { selectedOptions: number[] }[],
-  optionCount: number
-): { counts: number[]; total: number } {
-  const counts = new Array(optionCount).fill(0) as number[]
-  let total = 0
-
-  for (const vote of votes) {
-    total++
-    for (const idx of vote.selectedOptions) {
-      if (idx >= 0 && idx < optionCount) {
-        counts[idx]++
-      }
-    }
-  }
-
-  return { counts, total }
+export function isPollClosed(poll: { endsAt?: number }, now = Date.now()): boolean {
+  return poll.endsAt !== undefined && poll.endsAt <= now
 }

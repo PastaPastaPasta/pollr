@@ -1,15 +1,29 @@
 import { logger } from '@/lib/logger'
-import { computeVoteCounts } from '@/lib/utils'
 import { dpnsService } from './dpns-service'
 import type { PollDocument } from './poll-service'
-import { voteService, type VoteDocument } from './vote-service'
+import { voteService } from './vote-service'
 
 export interface EnrichedPoll {
   poll: PollDocument
   ownerUsername: string | null
   voteCounts: number[]
   totalVotes: number
-  userVote?: VoteDocument | null
+  /** Option indices the viewing user has already voted for. Empty when they have not voted. */
+  userChoices: number[]
+}
+
+interface PollVoteMetadata {
+  voteCounts: number[]
+  totalVotes: number
+  userChoices: number[]
+}
+
+function emptyVoteMetadata(optionCount: number): PollVoteMetadata {
+  return {
+    voteCounts: new Array<number>(optionCount).fill(0),
+    totalVotes: 0,
+    userChoices: [],
+  }
 }
 
 class PollMetadataService {
@@ -25,19 +39,20 @@ class PollMetadataService {
       Promise.all(
         polls.map(async (poll) => {
           try {
-            const votes = await voteService.getVotesForPoll(poll.$id)
-            const { counts, total } = computeVoteCounts(votes, poll.options.length)
-            const userVote = userId ? (votes.find(v => v.$ownerId === userId) ?? null) : null
-
-            return [poll.$id, { voteCounts: counts, totalVotes: total, userVote }] as const
-          } catch (error) {
-            logger.error(`PollMetadata: Failed to fetch vote totals for poll ${poll.$id}:`, error)
+            // Tallies come from the contract's countable indices, so this stays O(1) per poll.
+            const [tally, userChoices] = await Promise.all([
+              voteService.getVoteTally(poll.$id, poll.options.length),
+              userId ? voteService.getMyVotes(poll.$id, userId) : Promise.resolve<number[]>([]),
+            ])
 
             return [poll.$id, {
-              voteCounts: new Array(poll.options.length).fill(0),
-              totalVotes: 0,
-              userVote: null as VoteDocument | null
+              voteCounts: tally.counts,
+              totalVotes: tally.total,
+              userChoices,
             }] as const
+          } catch (error) {
+            logger.error(`PollMetadata: Failed to fetch vote totals for poll ${poll.$id}:`, error)
+            return [poll.$id, emptyVoteMetadata(poll.options.length)] as const
           }
         })
       )
@@ -46,18 +61,14 @@ class PollMetadataService {
     const voteMetadataMap = new Map(voteMetadata)
 
     return polls.map((poll) => {
-      const metadata = voteMetadataMap.get(poll.$id) ?? {
-        voteCounts: new Array(poll.options.length).fill(0),
-        totalVotes: 0,
-        userVote: null
-      }
+      const metadata = voteMetadataMap.get(poll.$id) ?? emptyVoteMetadata(poll.options.length)
 
       return {
         poll,
         ownerUsername: ownerUsernames.get(poll.$ownerId) ?? null,
         voteCounts: metadata.voteCounts,
         totalVotes: metadata.totalVotes,
-        userVote: metadata.userVote
+        userChoices: metadata.userChoices
       }
     })
   }
