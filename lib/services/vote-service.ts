@@ -31,7 +31,7 @@ class VoteService extends BaseDocumentService<VoteDocument> {
 
     // Decode selectedOptions from byte array (each byte = one option index)
     // SDK may return as Uint8Array, number[], or base64 string
-    // Strip 0xFF padding bytes added during creation (see castVote workaround)
+    // Strip 0xFF padding bytes from votes created with the historical write workaround.
     const rawSelectedOptions = data.selectedOptions || doc.selectedOptions;
     let rawBytes: number[] = [];
     if (rawSelectedOptions instanceof Uint8Array) {

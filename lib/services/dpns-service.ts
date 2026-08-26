@@ -1,35 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getEvoSdk } from './evo-sdk-service';
 import { DPNS_CONTRACT_ID, DPNS_DOCUMENT_TYPE } from '../constants';
-import { documentToPlainObject, identifierToBase58 } from './sdk-helpers';
-
-/**
- * Extract documents array from SDK response (handles Map, Array, and object formats)
- */
-function extractDocuments(response: unknown): Record<string, unknown>[] {
-  if (response instanceof Map) {
-    return Array.from(response.values())
-      .filter(Boolean)
-      .map(documentToPlainObject);
-  }
-  if (Array.isArray(response)) {
-    return response.map(documentToPlainObject);
-  }
-  const maybeDocument = response as { toObject?: () => unknown };
-  if (typeof maybeDocument.toObject === 'function') {
-    return [documentToPlainObject(response)];
-  }
-  const respObj = response as { documents?: unknown[]; toJSON?: () => unknown };
-  if (respObj?.documents) {
-    return respObj.documents.map(documentToPlainObject);
-  }
-  if (respObj?.toJSON) {
-    const json = respObj.toJSON() as { documents?: unknown[] } | unknown[];
-    if (Array.isArray(json)) return json.map(documentToPlainObject);
-    return ((json as { documents?: unknown[] }).documents || []).map(documentToPlainObject);
-  }
-  return [];
-}
+import { identifierToBase58, normalizeSDKResponse } from './sdk-helpers';
 
 class DpnsService {
   private cache: Map<string, { value: string; timestamp: number }> = new Map();
@@ -70,7 +42,7 @@ class DpnsService {
         limit: 20
       });
 
-      const documents = extractDocuments(response);
+      const documents = normalizeSDKResponse(response);
       return documents.map((doc) => {
         const data = (doc.data || doc) as Record<string, unknown>;
         return `${data.label}.${data.normalizedParentDomainName}`;
@@ -155,7 +127,7 @@ class DpnsService {
         limit: 100
       });
 
-      const documents = extractDocuments(response);
+      const documents = normalizeSDKResponse(response);
 
       // Collect ALL usernames per identity (some users have multiple)
       const usernamesByIdentity = new Map<string, string[]>();
@@ -284,7 +256,7 @@ class DpnsService {
         limit: 1
       });
 
-      const documents = extractDocuments(response);
+      const documents = normalizeSDKResponse(response);
       if (documents.length > 0) {
         const doc = documents[0];
         const data = (doc.data || doc) as Record<string, unknown>;

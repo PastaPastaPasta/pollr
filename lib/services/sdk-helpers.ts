@@ -222,11 +222,15 @@ function normalizeDocumentField(field: string, value: unknown): unknown {
  * them), so use it and normalize identifiers plus bigints here instead.
  */
 export function documentToPlainObject(doc: unknown): Record<string, unknown> {
+  if (doc === null || doc === undefined) {
+    return {};
+  }
+
   const document = doc as { toObject?: () => unknown };
   const raw = (typeof document.toObject === 'function' ? document.toObject() : doc) as Record<string, unknown>;
 
   if (!raw || typeof raw !== 'object') {
-    return raw;
+    return {};
   }
 
   return Object.fromEntries(
