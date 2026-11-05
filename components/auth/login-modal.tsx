@@ -165,7 +165,7 @@ export function LoginModal() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="relative w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto rounded-lg bg-[var(--dh-surface)] p-6 shadow-xl"
+                    className="dh-dialog relative max-h-[calc(100dvh-32px)] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Close button */}
@@ -178,11 +178,11 @@ export function LoginModal() {
                       </button>
                     </Dialog.Close>
 
-                    <Dialog.Title className="text-lg font-semibold text-[var(--dh-ink)] dark:text-white">
+                    <Dialog.Title className="dh-dialog__title">
                       Sign in to Pollr
                     </Dialog.Title>
-                    <Dialog.Description className="mt-1 text-sm text-[var(--dh-ink-2)]">
-                      Creating a poll or voting signs a public action with your Testnet identity and spends its credits. Reading polls and results is free.
+                    <Dialog.Description className="dh-dialog__lede">
+                      Reading is free. Sign in to create a poll or vote.
                     </Dialog.Description>
 
                     <dashhq-signin-help
@@ -193,9 +193,6 @@ export function LoginModal() {
                       kept-note="Your signing key is not encrypted. Use a dedicated Testnet identity; this key can authorize actions beyond Pollr."
                     />
                     <Link href="/" onClick={() => handleOpenChange(false)} className="inline-flex min-h-10 items-center text-sm text-[var(--dh-brand-ink)] underline">Browse polls without signing in →</Link>
-                    <details className="mt-4">
-                      <summary className="cursor-pointer py-3 text-sm font-medium text-[var(--dh-ink)]">Use an existing signing key (advanced)</summary>
-                      <p className="text-sm text-[var(--dh-ink-2)]">Pollr currently requires a private key; wallet approval and an app-limited credential are not available. Use a dedicated Testnet identity. This key can authorize actions beyond Pollr. Never enter your recovery phrase, MASTER key or a key holding real funds.</p>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                       {!isReady && (
                         <div className="dh-card px-3 py-2 text-sm text-[var(--dh-ink-2)]">
@@ -262,7 +259,7 @@ export function LoginModal() {
                       </div>
 
                       <p id="key-hint" className="text-xs text-[var(--dh-ink-2)]">
-                        Your key signs actions in this browser. Use a Testnet key only, never a key holding real funds.
+                        WIF format, from your Bridge backup. Never your recovery phrase or Master key.
                       </p>
 
                       {/* Remember Me */}
@@ -312,7 +309,7 @@ export function LoginModal() {
                         )}
                       </Button>
                     </form>
-                    </details>
+
                   </motion.div>
                 </Dialog.Content>
               </motion.div>

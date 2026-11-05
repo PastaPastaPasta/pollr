@@ -19,7 +19,7 @@ export function Header() {
 
   return (
     <dashhq-bar product="pollr" network="testnet" phone-nav="tabs" sticky="">
-      <span slot="logo"><BarChart3 className="h-5 w-5 text-[var(--dh-act)]" aria-hidden /></span>
+      <span slot="logo"><BarChart3 className="h-5 w-5 text-[var(--dh-accent)]" aria-hidden /></span>
       <nav slot="nav" aria-label="Pollr">
         {links.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-current={(href === '/' ? pathname === '/' : pathname.startsWith(href)) ? 'page' : undefined}>
@@ -29,9 +29,14 @@ export function Header() {
       </nav>
       <div slot="actions">
         {user ? (
-          <Button variant="ghost" size="sm" onClick={() => { logout().catch(() => {}) }} aria-label="Sign out">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <details className="pollr-account">
+            <summary className="dh-btn dh-btn--quiet" aria-label="Your account">{user.dpnsUsername || user.identityId.slice(0, 1)}</summary>
+            <div className="dh-card">
+              <p>{user.dpnsUsername || user.identityId}</p>
+              <Link className="dh-btn dh-btn--quiet" href="/my-polls">My polls</Link>
+              <Button variant="ghost" size="sm" onClick={() => { logout().catch(() => {}) }}><LogOut className="h-4 w-4" />Sign out</Button>
+            </div>
+          </details>
         ) : <Button variant="outline" size="sm" onClick={loginModal.open}>Sign in</Button>}
       </div>
     </dashhq-bar>

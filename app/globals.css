@@ -42,6 +42,10 @@ html:root { --dh-accent: var(--dh-accent-pollr); }
 body { background: var(--dh-page); color: var(--dh-ink); font-family: var(--dh-font); font-size: 15px; }
 h1, h2 { font-stretch: 110%; letter-spacing: -.015em; }
 :focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
-@media (max-width: 767px) { dashhq-bar > [slot="nav"] { display: none; } }
+
 @media (pointer: coarse) { input, textarea, select { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; } }
+
+.pollr-account { position: relative; }
+.pollr-account > summary { list-style: none; max-width: 100px; overflow: hidden; }
+.pollr-account > div { position: absolute; right: 0; top: 100%; width: 240px; overflow-wrap: anywhere; z-index: 60; }
