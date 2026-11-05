@@ -41,9 +41,9 @@ export function PollOption({
       disabled={disabled}
       className={`relative flex w-full items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 text-left transition-colors ${
         isSelected
-          ? 'border-[var(--dh-brand)] bg-[var(--dh-sunken)]/50 dark:bg-[var(--dh-sunken)]/50'
+          ? 'border-[var(--dh-brand)] bg-[var(--dh-brand-soft)]'
           : 'border-[var(--dh-line)] hover:border-[var(--dh-line-2)] dark:hover:border-[var(--dh-line-2)]'
-      } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+      } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {/* Results bar (behind content) */}
       {showResults && (
@@ -57,12 +57,12 @@ export function PollOption({
           <div
             className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
               isSelected
-                ? 'border-[var(--dh-brand)] bg-[var(--dh-sunken)]0'
+                ? 'border-[var(--dh-brand)] bg-[var(--dh-brand-fill)]'
                 : 'border-[var(--dh-line-2)]'
             }`}
           >
             {isSelected && (
-              <div className="h-2 w-2 rounded-full bg-[var(--dh-surface)]" />
+              <div className="h-2 w-2 rounded-full bg-white" />
             )}
           </div>
         ) : (
@@ -70,7 +70,7 @@ export function PollOption({
           <div
             className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
               isSelected
-                ? 'border-[var(--dh-brand)] bg-[var(--dh-sunken)]0'
+                ? 'border-[var(--dh-brand)] bg-[var(--dh-brand-fill)]'
                 : 'border-[var(--dh-line-2)]'
             }`}
           >

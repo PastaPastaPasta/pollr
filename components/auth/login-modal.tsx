@@ -267,7 +267,7 @@ export function LoginModal() {
                           checked={rememberMe}
                           onCheckedChange={setRememberMe}
                           disabled={isLoading || !isReady}
-                          className="relative h-6 w-11 cursor-pointer rounded-full bg-[var(--dh-line)] transition-colors data-[state=checked]:bg-[var(--dh-sunken)]0"
+                          className="relative h-6 w-11 cursor-pointer rounded-full bg-[var(--dh-line)] transition-colors data-[state=checked]:bg-[var(--dh-brand-fill)]"
                         >
                           <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-[var(--dh-surface)] shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
                         </Switch.Root>

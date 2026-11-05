@@ -138,7 +138,7 @@ function DefaultErrorFallback({ error, retry, level }: DefaultErrorFallbackProps
 
       <button
         onClick={action}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--dh-sunken)]0 text-white rounded-lg bg-[var(--dh-brand-soft)] transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--dh-line-2)] bg-[var(--dh-surface)] text-[var(--dh-ink)] rounded-md hover:bg-[var(--dh-sunken)] transition-colors"
       >
         <RefreshCw className="h-4 w-4" />
         {actionText}

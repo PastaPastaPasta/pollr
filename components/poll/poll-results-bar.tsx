@@ -12,8 +12,8 @@ export function PollResultsBar({ percentage, isUserPick }: PollResultsBarProps) 
     <motion.div
       className={`absolute inset-0 rounded-xl ${
         isUserPick
-          ? 'bg-[var(--dh-sunken)]0/200/30'
-          : 'bg-[var(--dh-line)]/60/40'
+          ? 'bg-[var(--dh-brand-soft)]'
+          : 'bg-[var(--dh-sunken)]'
       }`}
       initial={{ width: '0%' }}
       animate={{ width: `${percentage}%` }}
