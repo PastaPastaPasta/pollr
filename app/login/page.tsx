@@ -22,7 +22,7 @@ export default function LoginPage() {
 
   if (isAuthRestoring) {
     return (
-      <div className="flex items-center justify-center py-32">
+      <div className="dh-loading">
         <Spinner size="lg" />
       </div>
     )
@@ -32,7 +32,7 @@ export default function LoginPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center py-24"
+      className="dh-narrow dh-page-header"
     >
       <h1 className="dh-page-header__title mb-4">
         <span className="text-[var(--dh-ink)]">Pollr</span>
