@@ -8,7 +8,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'dh-btn--secondary',
-        action: 'dh-btn--primary',
+        primary: 'dh-btn--primary',
         destructive: 'dh-btn--destructive',
         outline: 'dh-btn--secondary',
         secondary: 'dh-btn--secondary',
