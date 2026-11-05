@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { useLoginModal } from '@/hooks/use-login-modal'
 import { useAuth } from '@/contexts/auth-context'
 import { pollService } from '@/lib/services/poll-service'
 import {
@@ -30,6 +31,7 @@ const DURATION_OPTIONS: { value: string; label: string; ms: number | null }[] = 
 export function CreatePollForm() {
   const router = useRouter()
   const { user } = useAuth()
+  const { open: openLogin } = useLoginModal()
 
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState<string[]>(['', ''])
@@ -75,7 +77,8 @@ export function CreatePollForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user || !isValid) return
+    if (!isValid || isSubmitting) return
+    if (!user) { openLogin(); return }
 
     const trimmedOptions = options
       .map((o) => o.trim())
@@ -112,10 +115,8 @@ export function CreatePollForm() {
   }
 
   return (
+    <div className="grid gap-6 lg:grid-cols-2 items-start">
     <Card>
-      <CardHeader>
-        <CardTitle>Create a poll</CardTitle>
-      </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Question */}
@@ -156,6 +157,7 @@ export function CreatePollForm() {
               <div key={index} className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Input
+                    aria-label={`Option ${index + 1}`}
                     placeholder={`Option ${index + 1}`}
                     value={option}
                     onChange={(e) => handleOptionChange(index, e.target.value)}
@@ -173,6 +175,7 @@ export function CreatePollForm() {
                     type="button"
                     variant="ghost"
                     size="icon"
+                    aria-label={`Remove option ${index + 1}`}
                     onClick={() => removeOption(index)}
                     disabled={isSubmitting}
                     className="flex-shrink-0 text-[var(--dh-ink-2)] hover:text-[var(--dh-bad)]"
@@ -268,11 +271,20 @@ export function CreatePollForm() {
                 Creating poll…
               </span>
             ) : (
-              'Create poll'
+              user ? 'Publish poll on Testnet' : 'Sign in to publish'
             )}
           </Button>
         </form>
       </CardContent>
     </Card>
+    <section className="dh-card" aria-labelledby="poll-preview-title">
+      <p className="dh-badge dh-badge--outline mb-3">Preview — not published</p>
+      <h2 id="poll-preview-title" className="dh-section__title break-words">{question.trim() || 'Your question appears here'}</h2>
+      <p className="text-sm text-[var(--dh-ink-2)] my-3">{multiChoice ? 'Multiple choice · one vote per identity for each option' : 'Single choice · one vote per identity'}</p>
+      <ul className="divide-y divide-[var(--dh-line)] break-words">{options.map((option, i) => <li key={i} className="py-3">{option.trim() || `Option ${i + 1}`}</li>)}</ul>
+      <p className="mt-4 text-sm text-[var(--dh-ink-2)]">{DURATION_OPTIONS.find(option => option.value === duration)?.label}. No votes yet. After publishing, share the public link so your group can vote.</p>
+      <p className="mt-3 text-sm text-[var(--dh-ink-2)]">Polls and votes are public on Testnet. Close times are advisory. No data is sent while you preview.</p>
+    </section>
+    </div>
   )
 }

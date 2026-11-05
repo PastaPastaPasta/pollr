@@ -9,8 +9,8 @@ export function isPracticePoll({ poll, ownerUsername }: EnrichedPoll): boolean {
     TEST_NAME.test(ownerUsername ?? '') || HASH_SUFFIX.test((ownerUsername ?? '').replace(/\.dash$/i, ''))
 }
 
-export function selectHomePolls(polls: EnrichedPoll[], showAll: boolean): EnrichedPoll[] {
-  return polls.filter(poll => showAll || !isPracticePoll(poll)).sort((a, b) =>
+export function selectHomePolls(polls: EnrichedPoll[], showAll: boolean, showPractice = false): EnrichedPoll[] {
+  return polls.filter(poll => showPractice || !isPracticePoll(poll)).sort((a, b) =>
     Number(isPollClosed(a.poll)) - Number(isPollClosed(b.poll)) ||
     (showAll ? 0 : (b.totalVotes ?? 0) - (a.totalVotes ?? 0)) ||
     b.poll.$createdAt - a.poll.$createdAt)

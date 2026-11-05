@@ -15,6 +15,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { voteService, applyCastVoteResult, type PollTally } from '@/lib/services/vote-service'
 import { logger } from '@/lib/logger'
 import { isPollClosed } from '@/lib/utils'
+import { ExamplePoll } from '@/components/poll/example-poll'
 import { selectHomePolls } from '@/lib/home-polls'
 import { reportCastVote } from '@/lib/vote-feedback'
 import toast from 'react-hot-toast'
@@ -160,7 +161,7 @@ function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollList
         <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
         <p className="text-[var(--dh-ink-2)] mb-2">Your community’s questions go here</p>
         <p className="text-sm text-[var(--dh-ink-2)]">
-          No community polls in this sample. Try the example above with your own group, or open the full archive to inspect the practice records.
+          No polls match this view in the latest 100 records. Try the browser example above or write a question for your group.
         </p>
       </motion.div>
     )
@@ -179,8 +180,13 @@ export default function HomePage() {
   const { isReady } = useSdk()
   const { polls, isLoading, error, refetch } = usePolls(100)
   const [showAll, setShowAll] = useState(false)
+  const [showPractice, setShowPractice] = useState(false)
   useEffect(() => {
-    const sync = () => setShowAll(new URLSearchParams(window.location.search).get('view') === 'all')
+    const sync = () => {
+      const params = new URLSearchParams(window.location.search)
+      setShowAll(params.get('view') === 'all')
+      setShowPractice(params.get('practice') === '1')
+    }
     sync()
     window.addEventListener('popstate', sync)
     return () => window.removeEventListener('popstate', sync)
@@ -192,7 +198,7 @@ export default function HomePage() {
     else url.searchParams.delete('view')
     window.history.pushState(null, '', url)
   }
-  const visiblePolls = selectHomePolls(polls, showAll)
+  const visiblePolls = selectHomePolls(polls, showAll, showAll && showPractice)
 
   return (
     <div className="space-y-8">
@@ -204,34 +210,20 @@ export default function HomePage() {
         className="dh-page-header dh-page-header--home"
       >
         <div className="dh-page-header__row"><div className="dh-page-header__text"><h1 className="dh-page-header__title">
-          Try a public poll on Platform.
+          Try a poll. Then ask your own question.
         </h1>
         <p className="dh-page-header__lede">
           Pollr is a Platform demo app: ask a question, share its link and record votes on Testnet. Reading is free. Creating or voting uses a Testnet identity; data may reset.
         </p>
         </div><div className="dh-page-header__actions"><Link href="/create">
-          <Button variant="primary" size="lg" className="gap-2">
+          <Button variant="outline" className="gap-2">
             <Plus className="h-5 w-5" />
-            Create a poll
+            Write your first poll
           </Button>
         </Link></div></div>
       </motion.div>
 
-      <section className="dh-card" aria-labelledby="demo-title">
-        <p className="text-sm text-[var(--dh-ink-2)] mb-2">Illustrative example · not a live poll</p>
-        <h2 id="demo-title" className="dh-section__title">Which day works for our meetup?</h2>
-        <div className="grid gap-6 md:grid-cols-2 mt-4">
-          <div>
-            <p className="text-[var(--dh-ink-2)] mb-3">Give your group a clear question and a few choices.</p>
-            <ul className="divide-y divide-[var(--dh-line)]"><li className="py-2">Saturday morning</li><li className="py-2">Sunday afternoon</li></ul>
-          </div>
-          <ol className="list-decimal pl-5 space-y-2 text-[var(--dh-ink-2)]">
-            <li>Create the poll and choose a closing date.</li>
-            <li>Share its public link with your group.</li>
-            <li>See each choice’s vote count and share of the total.</li>
-          </ol>
-        </div>
-      </section>
+      <ExamplePoll />
 
       {/* Recent polls */}
       <div>
@@ -242,8 +234,15 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Community questions from the latest 100 records, with open polls and participation first. Automated and practice records are kept in the full archive.</p>
-        <div className="dh-seg mb-4" aria-label="Poll view"><button type="button" aria-pressed={!showAll} onClick={() => changeView(false)}>Community</button><button type="button" aria-pressed={showAll} onClick={() => changeView(true)}>Full archive</button></div>
+        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Community questions from the latest 100 records, with open polls and participation first. The archive includes closed community polls. Automated and practice records are hidden unless you choose to include them.</p>
+        <div className="dh-seg mb-4" aria-label="Poll view"><button type="button" aria-pressed={!showAll} onClick={() => changeView(false)}>Community</button><button type="button" aria-pressed={showAll} onClick={() => changeView(true)}>Archive</button></div>
+        {showAll && <label className="dh-check mb-4"><input type="checkbox" checked={showPractice} onChange={e => {
+          setShowPractice(e.target.checked)
+          const url = new URL(window.location.href)
+          if (e.target.checked) url.searchParams.set('practice', '1')
+          else url.searchParams.delete('practice')
+          window.history.pushState(null, '', url)
+        }} /> Include automated and practice records</label>}
         <PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} />
       </div>
     </div>
