@@ -122,9 +122,9 @@ interface PollListContentProps {
 function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollListContentProps) {
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-[var(--dh-ink-2)]">
+      <div className="dh-loading dh-loading--block">
         <Spinner size="lg" />
-        <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
+        <p className="mt-4 text-sm">Connecting to Dash Platform…</p>
       </div>
     )
   }
@@ -141,8 +141,9 @@ function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollList
 
   if (error) {
     return (
-      <div className="dh-empty">
-        <p className="text-[var(--dh-bad)] mb-2">{error}</p>
+      <div className="dh-error" role="alert">
+        <p className="dh-error__title">Couldn’t load polls</p>
+        <details><summary>Details</summary>{error}</details>
         <p className="text-sm text-[var(--dh-ink-2)]">Please check your connection and try again.</p>
         <Button variant="outline" className="mt-4" onClick={onRetry}>Try again</Button>
       </div>
@@ -187,27 +188,27 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="dh-page-header"
+        className="dh-page-header dh-page-header--home"
       >
-        <h1 className="dh-page-header__title">
+        <div className="dh-page-header__row"><div className="dh-page-header__text"><h1 className="dh-page-header__title">
           <span className="text-[var(--dh-ink)]">Pollr</span>
         </h1>
         <p className="dh-page-header__lede">
           Public polls on Dash Platform Testnet. Browse questions and results freely; sign in to create a poll or vote.
         </p>
-        <Link href="/create">
-          <Button variant="action" size="lg" className="gap-2">
+        </div><div className="dh-page-header__actions"><Link href="/create">
+          <Button variant="primary" size="lg" className="gap-2">
             <Plus className="h-5 w-5" />
             Create a poll
           </Button>
-        </Link>
+        </Link></div></div>
       </motion.div>
 
       {/* Recent polls */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="h-5 w-5 text-[var(--dh-brand-ink)]" />
-          <h2 className="text-lg font-semibold text-[var(--dh-ink)] dark:text-white">
+          <h2 className="dh-section__title text-[var(--dh-ink)] dark:text-white">
             Polls
           </h2>
         </div>
@@ -216,9 +217,7 @@ export default function HomePage() {
         {!isLoading && polls.length > 0 && polls.every(({ poll }) => isPollClosed(poll)) && (
           <p className="dh-notice mb-4">No open polls right now. Browse the results below, or create a question for your community. These are real Testnet records; some are practice polls with no votes.</p>
         )}
-        <Button variant="outline" className="mb-4" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
-          {showAll ? 'Prioritize community questions' : 'Sort all polls by open and newest'}
-        </Button>
+        <div className="dh-seg mb-4" aria-label="Poll order"><button type="button" aria-pressed={!showAll} onClick={() => setShowAll(false)}>Community first</button><button type="button" aria-pressed={showAll} onClick={() => setShowAll(true)}>Open and newest</button></div>
         <PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} />
       </div>
     </div>

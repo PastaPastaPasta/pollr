@@ -34,7 +34,7 @@ export default function LoginPage() {
       animate={{ opacity: 1 }}
       className="flex flex-col items-center justify-center py-24"
     >
-      <h1 className="text-3xl font-bold mb-4">
+      <h1 className="dh-page-header__title mb-4">
         <span className="text-[var(--dh-ink)]">Pollr</span>
       </h1>
       <p className="text-[var(--dh-ink-2)] text-sm">

@@ -26,6 +26,7 @@ function voteCountLabel(totalVotes: number | null, isClosed: boolean, multiChoic
 }
 
 interface PollCardProps {
+  detail?: boolean
   poll: PollDocument
   /** Per-option counts, or null when the tally could not be read. Null is not zero. */
   voteCounts: number[] | null
@@ -40,6 +41,7 @@ interface PollCardProps {
 }
 
 export function PollCard({
+  detail = false,
   poll,
   voteCounts,
   totalVotes,
@@ -116,7 +118,7 @@ export function PollCard({
   const displayName = ownerUsername || truncateId(poll.$ownerId)
 
   const cardContent = (
-    <Card className="relative hover:border-[var(--dh-line-2)]">
+    <Card className="dh-card--link relative hover:border-[var(--dh-line-2)]">
       <CardHeader className="pb-3">
         <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2 min-w-0">
@@ -135,7 +137,7 @@ export function PollCard({
           </div>
           <div className="flex flex-shrink-0 items-center gap-1.5">
             {isClosed && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--dh-sunken)] px-2.5 py-0.5 text-xs font-medium text-[var(--dh-ink-2)] dark:text-[var(--dh-ink-2)]">
+              <span className="dh-badge dh-badge--outline inline-flex items-center gap-1 text-xs font-medium text-[var(--dh-ink-2)] dark:text-[var(--dh-ink-2)]">
                 <Lock className="h-3 w-3" />
                 Closed
               </span>
@@ -143,11 +145,11 @@ export function PollCard({
             <PollTypeBadge multiChoice={poll.multiChoice} />
           </div>
         </div>
-        <h3 className="mt-3 text-xl font-semibold text-[var(--dh-ink)] dark:text-white">
+        {!detail && <h3 className="dh-card__title mt-3 text-[var(--dh-ink)] dark:text-white">
           <Link href={`/poll?id=${poll.$id}`} className={isInteractive ? 'hover:underline' : 'after:absolute after:inset-0 after:rounded-lg'}>
             {poll.question}
           </Link>
-        </h3>
+        </h3>}
       </CardHeader>
 
       <CardContent className="space-y-2">
@@ -195,15 +197,16 @@ export function PollCard({
 
         {canVote && poll.multiChoice && (
           <Button
-            variant="action"
+            variant={detail ? "primary" : "secondary"}
             size="sm"
             onClick={handleVote}
             disabled={pendingDraftChoices.length === 0 || isVoting}
+            aria-busy={isVoting}
           >
             {isVoting ? (
               <span className="flex items-center gap-2">
-                <Spinner size="xs" className="border-white" />
-                Voting...
+
+                Voting…
               </span>
             ) : (
               'Vote'
@@ -214,7 +217,7 @@ export function PollCard({
         {canVote && !poll.multiChoice && isVoting && (
           <span className="flex items-center gap-2 text-sm text-[var(--dh-ink-2)]">
             <Spinner size="xs" />
-            Voting...
+            Voting…
           </span>
         )}
       </CardFooter>

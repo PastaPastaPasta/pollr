@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/auth-context'
 import { pollService } from '@/lib/services/poll-service'
@@ -115,15 +114,15 @@ export function CreatePollForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create a Poll</CardTitle>
+        <CardTitle>Create a poll</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Question */}
-          <div className="space-y-2">
+          <div className="dh-field">
             <label
               htmlFor="question"
-              className="text-sm font-medium text-[var(--dh-ink-2)]"
+              className="dh-field__label"
             >
               Question
             </label>
@@ -149,8 +148,8 @@ export function CreatePollForm() {
           </div>
 
           {/* Options */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-[var(--dh-ink-2)]">
+          <div className="dh-field">
+            <label className="dh-field__label">
               Options
             </label>
             {options.map((option, index) => (
@@ -194,54 +193,54 @@ export function CreatePollForm() {
                 className="w-full"
               >
                 <Plus className="mr-1.5 h-4 w-4" />
-                Add Option
+                Add option
               </Button>
             )}
           </div>
 
-          {/* Poll Type */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[var(--dh-ink-2)]">
-              Poll Type
+          {/* Poll type */}
+          <div className="dh-field">
+            <label className="dh-field__label">
+              Poll type
             </label>
-            <div className="flex gap-2">
+            <div className="dh-seg dh-seg--block">
               <Button
                 type="button"
-                variant={multiChoice ? 'outline' : 'default'}
+                aria-pressed={!multiChoice}
                 size="sm"
                 onClick={() => setMultiChoice(false)}
                 disabled={isSubmitting}
                 className="flex-1"
               >
-                Single Choice
+                Single choice
               </Button>
               <Button
                 type="button"
-                variant={multiChoice ? 'default' : 'outline'}
+                aria-pressed={multiChoice}
                 size="sm"
                 onClick={() => setMultiChoice(true)}
                 disabled={isSubmitting}
                 className="flex-1"
               >
-                Multiple Choice
+                Multiple choice
               </Button>
             </div>
           </div>
 
           {/* Close time */}
-          <div className="space-y-2">
+          <div className="dh-field">
             <label
               htmlFor="duration"
-              className="text-sm font-medium text-[var(--dh-ink-2)]"
+              className="dh-field__label"
             >
-              Close Time <span className="text-[var(--dh-ink-2)]">(optional)</span>
+              Close time <span className="text-[var(--dh-ink-2)]">(optional)</span>
             </label>
             <select
               id="duration"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               disabled={isSubmitting}
-              className="w-full rounded-xl border border-[var(--dh-line)] bg-[var(--dh-surface)] px-4 py-2 text-sm text-[var(--dh-ink)] focus-visible:ring-[var(--dh-focus)] focus:outline-none disabled:opacity-50 dark:border-[var(--dh-line-2)] dark:text-[var(--dh-ink)]"
+              className="dh-select w-full text-[var(--dh-ink)] dark:text-[var(--dh-ink)]"
             >
               {DURATION_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -258,17 +257,18 @@ export function CreatePollForm() {
           {/* Submit */}
           <Button
             type="submit"
-            variant="action"
+            variant="primary"
             className="w-full"
             disabled={!isValid || isSubmitting}
+            aria-busy={isSubmitting}
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
-                <Spinner size="xs" className="border-white" />
-                Creating Poll...
+
+                Creating poll…
               </span>
             ) : (
-              'Create Poll'
+              'Create poll'
             )}
           </Button>
         </form>

@@ -172,7 +172,7 @@ export function LoginModal() {
                     {/* Close button */}
                     <Dialog.Close asChild>
                       <button
-                        className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-md text-[var(--dh-ink-2)] hover:bg-[var(--dh-sunken)] hover:text-[var(--dh-ink-2)] dark:hover:text-[var(--dh-ink-2)]"
+                        className="dh-btn absolute right-3 top-3 flex items-center justify-center text-[var(--dh-ink-2)] hover:text-[var(--dh-ink-2)] dark:hover:text-[var(--dh-ink-2)]"
                         aria-label="Close"
                       >
                         <X className="h-4 w-4" />
@@ -187,10 +187,10 @@ export function LoginModal() {
                     </Dialog.Description>
 
                     <div className="mt-4 space-y-3 text-sm text-[var(--dh-ink-2)]">
-                      <h2 className="font-semibold text-[var(--dh-ink)]">New to Platform?</h2>
+                      <h2 className="dh-section__title text-[var(--dh-ink)]">New to Platform?</h2>
                       <ol className="list-decimal pl-5 space-y-2">
                         <li><a className="text-[var(--dh-brand-ink)] underline" href="https://bridge.thepasta.org/?network=testnet" data-family="bridge" data-network="testnet">Create a Testnet identity in Bridge →</a> Keep its key backup private.</li>
-                        <li>When Bridge gives you a deposit address, <a className="text-[var(--dh-brand-ink)] underline" href="https://faucet.dashhq.org/?network=testnet" data-family="faucet" data-network="testnet">get free test funds from Faucet →</a>, then finish registration in Bridge.</li>
+                        <li>When bridge gives you a deposit address, <a className="text-[var(--dh-brand-ink)] underline" href="https://faucet.dashhq.org/?network=testnet" data-family="faucet" data-network="testnet">get free test funds from Faucet →</a>, then finish registration in Bridge.</li>
                         <li>Return here with the identity ID (a username is optional) and its HIGH or CRITICAL authentication key in WIF format.</li>
                       </ol>
                       <p>Test funds have no cash value; Testnet data may reset.</p>
@@ -201,8 +201,8 @@ export function LoginModal() {
                       <p className="text-sm text-[var(--dh-ink-2)]">Pollr currently requires a private key; wallet approval and an app-limited credential are not available. Use a dedicated Testnet identity. This key can authorize actions beyond Pollr. Never enter your recovery phrase, MASTER key or a key holding real funds.</p>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                       {!isReady && (
-                        <div className="rounded-xl border border-[var(--dh-line)] bg-[var(--dh-page)] px-3 py-2 text-sm text-[var(--dh-ink-2)] dark:border-[var(--dh-line-2)] dark:bg-[var(--dh-sunken)]">
-                          Connecting to Dash Platform...
+                        <div className="dh-card px-3 py-2 text-sm text-[var(--dh-ink-2)]">
+                          Connecting to Dash Platform…
                         </div>
                       )}
 
@@ -210,7 +210,7 @@ export function LoginModal() {
                       <div className="space-y-2">
                         <label
                           htmlFor="identity-id"
-                          className="text-sm font-medium text-[var(--dh-ink-2)]"
+                          className="dh-field__label"
                         >
                           Identity ID or username
                         </label>
@@ -228,7 +228,7 @@ export function LoginModal() {
                         />
                         {isLookingUp && (
                           <p className="text-xs text-[var(--dh-ink-2)]">
-                            Resolving identity...
+                            Resolving identity…
                           </p>
                         )}
                         {!isLookingUp && resolvedIdentity && (
@@ -245,7 +245,7 @@ export function LoginModal() {
                       <div className="space-y-2">
                         <label
                           htmlFor="private-key"
-                          className="text-sm font-medium text-[var(--dh-ink-2)]"
+                          className="dh-field__label"
                         >
                           Private key (WIF)
                         </label>
@@ -272,7 +272,7 @@ export function LoginModal() {
                       <div className="flex items-center justify-between">
                         <label
                           htmlFor="remember-me"
-                          className="text-sm font-medium text-[var(--dh-ink-2)]"
+                          className="dh-field__label"
                         >
                           Keep my key on this device
                         </label>
@@ -301,12 +301,13 @@ export function LoginModal() {
                       {/* Submit button */}
                       <Button
                         type="submit"
-                        variant="outline" className="w-full"
+                        variant="primary" className="w-full"
                         disabled={!canSubmit}
+                        aria-busy={isLoading}
                       >
                         {isLoading ? (
                           <span className="flex items-center gap-2">
-                            <Spinner size="xs" className="border-white" />
+
                             Signing in…
                           </span>
                         ) : (

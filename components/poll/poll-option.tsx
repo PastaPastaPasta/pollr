@@ -39,11 +39,8 @@ export function PollOption({
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`relative flex w-full items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 text-left transition-colors ${
-        isSelected
-          ? 'border-[var(--dh-brand)] bg-[var(--dh-brand-soft)]'
-          : 'border-[var(--dh-line)] hover:border-[var(--dh-line-2)] dark:hover:border-[var(--dh-line-2)]'
-      } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      aria-pressed={isSelected}
+      className="dh-btn relative w-full justify-start gap-3 overflow-hidden whitespace-normal text-left"
     >
       {/* Results bar (behind content) */}
       {showResults && (

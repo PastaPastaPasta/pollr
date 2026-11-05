@@ -11,9 +11,9 @@ function CreatePollPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h1 className="text-2xl font-bold text-[var(--dh-ink)] dark:text-white mb-6">
-        Create a Poll
-      </h1>
+      <header className="dh-page-header"><h1 className="dh-page-header__title text-[var(--dh-ink)] dark:text-white mb-6">
+        Create a poll
+      </h1></header>
       <CreatePollForm />
     </motion.div>
   )

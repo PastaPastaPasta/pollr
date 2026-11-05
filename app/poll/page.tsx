@@ -37,7 +37,7 @@ function PollPageContent() {
   const handleShare = useCallback(() => {
     const url = window.location.href
     navigator.clipboard.writeText(url).then(() => {
-      toast.success('Poll link copied to clipboard!')
+      toast.success('Poll link copied to clipboard')
     }).catch(() => {
       toast.error('Failed to copy link')
     })
@@ -45,7 +45,7 @@ function PollPageContent() {
 
   if (!pollId) {
     return (
-      <div className="text-center py-16">
+      <div className="dh-empty">
         <AlertCircle className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
         <p className="text-[var(--dh-ink-2)]">No poll ID provided</p>
         <Link href="/" className="text-[var(--dh-brand-ink)] hover:text-[var(--dh-brand-ink)] text-sm mt-2 inline-block">
@@ -57,9 +57,9 @@ function PollPageContent() {
 
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-[var(--dh-ink-2)]">
+      <div className="dh-loading dh-loading--block">
         <Spinner size="lg" />
-        <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
+        <p className="mt-4 text-sm">Connecting to Dash Platform…</p>
       </div>
     )
   }
@@ -73,7 +73,7 @@ function PollPageContent() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-center py-16"
+        className="dh-empty"
       >
         <AlertCircle className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
         <p className="text-[var(--dh-ink-2)] mb-2">
@@ -103,8 +103,13 @@ function PollPageContent() {
         </Button>
       </div>
 
+      <header className="dh-page-header">
+        <nav className="dh-crumbs" aria-label="Breadcrumb"><Link href="/">Polls</Link><span aria-hidden="true">/</span><span>{poll.question}</span></nav>
+        <h1 className="dh-page-header__title">{poll.question}</h1>
+      </header>
       {/* Poll */}
       <PollCard
+        detail
         poll={poll}
         ownerUsername={ownerUsername}
         voteCounts={voteCounts}

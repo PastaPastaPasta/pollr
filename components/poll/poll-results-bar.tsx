@@ -10,7 +10,7 @@ interface PollResultsBarProps {
 export function PollResultsBar({ percentage, isUserPick }: PollResultsBarProps) {
   return (
     <motion.div
-      className={`absolute inset-0 rounded-xl ${
+      className={`absolute inset-0 rounded-md ${
         isUserPick
           ? 'bg-[var(--dh-brand-soft)]'
           : 'bg-[var(--dh-sunken)]'
