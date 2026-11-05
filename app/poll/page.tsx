@@ -88,17 +88,16 @@ function PollPageContent() {
 
   return (
     <div className="space-y-4">
-      {/* Navigation */}
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5">
-          <Share2 className="h-4 w-4" />
-          Share
-        </Button>
-      </div>
-
       <header className="dh-page-header">
-        <nav className="dh-crumbs" aria-label="Breadcrumb"><Link href="/">Polls</Link><span>{poll.question}</span></nav>
-        <h1 className="dh-page-header__title">{poll.question}</h1>
+        <div className="dh-page-header__row">
+          <div className="dh-page-header__text">
+            <nav className="dh-crumbs" aria-label="Breadcrumb"><Link href="/">Polls</Link><span>{poll.question}</span></nav>
+            <h1 className="dh-page-header__title">{poll.question}</h1>
+          </div>
+          <div className="dh-page-header__actions">
+            <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5"><Share2 className="h-4 w-4" />Share</Button>
+          </div>
+        </div>
       </header>
       {/* Poll */}
       <PollCard

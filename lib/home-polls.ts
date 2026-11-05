@@ -6,7 +6,7 @@ const HASH_SUFFIX = /(?:^|[\s_-])[a-f\d]{6,}(?:[-_]\d+)?(?:[?.!]|$)/i
 
 export function isPracticePoll({ poll, ownerUsername }: EnrichedPoll): boolean {
   return TEST_NAME.test(poll.question) || HASH_SUFFIX.test(poll.question) ||
-    TEST_NAME.test(ownerUsername ?? '') || HASH_SUFFIX.test(ownerUsername ?? '')
+    TEST_NAME.test(ownerUsername ?? '') || HASH_SUFFIX.test((ownerUsername ?? '').replace(/\.dash$/i, ''))
 }
 
 export function selectHomePolls(polls: EnrichedPoll[], showAll: boolean): EnrichedPoll[] {
