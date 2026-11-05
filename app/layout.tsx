@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en" data-dh-accent="pollr" className="h-full" suppressHydrationWarning>
       <head>
         {/* Blocking external script sets the shared theme before first paint. */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
