@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Share2, AlertCircle } from 'lucide-react'
+import { Share2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PollCard } from '@/components/poll/poll-card'
 import { PollSkeleton } from '@/components/poll/poll-skeleton'
@@ -89,14 +89,7 @@ function PollPageContent() {
   return (
     <div className="space-y-4">
       {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-1 text-sm text-[var(--dh-ink-2)] hover:text-[var(--dh-ink-2)] transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to polls
-        </Link>
+      <div className="flex justify-end">
         <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5">
           <Share2 className="h-4 w-4" />
           Share
@@ -104,7 +97,7 @@ function PollPageContent() {
       </div>
 
       <header className="dh-page-header">
-        <nav className="dh-crumbs" aria-label="Breadcrumb"><Link href="/">Polls</Link><span aria-hidden="true">/</span><span>{poll.question}</span></nav>
+        <nav className="dh-crumbs" aria-label="Breadcrumb"><Link href="/">Polls</Link><span>{poll.question}</span></nav>
         <h1 className="dh-page-header__title">{poll.question}</h1>
       </header>
       {/* Poll */}

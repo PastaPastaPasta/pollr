@@ -38,8 +38,9 @@ export default function LoginPage() {
         <span className="text-[var(--dh-ink)]">Pollr</span>
       </h1>
       <p className="text-[var(--dh-ink-2)] text-sm">
-        Sign in to create and vote on polls
+        Sign in to create and vote on polls. Reading is free.
       </p>
+      <button className="dh-btn mt-4" onClick={openLogin}>Open sign-in options</button>
     </motion.div>
   )
 }

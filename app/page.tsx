@@ -158,9 +158,9 @@ function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollList
         className="dh-empty"
       >
         <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
-        <p className="text-[var(--dh-ink-2)] mb-2">Ask the first question</p>
+        <p className="text-[var(--dh-ink-2)] mb-2">Your community’s questions go here</p>
         <p className="text-sm text-[var(--dh-ink-2)]">
-          Pollr records public questions and votes on Dash Platform Testnet. Start with a clear question, such as “Which day works for our meetup?”, add a few choices, and share the poll.
+          No community polls in this sample. Try the example above with your own group, or open the full archive to inspect the practice records.
         </p>
       </motion.div>
     )
@@ -179,6 +179,19 @@ export default function HomePage() {
   const { isReady } = useSdk()
   const { polls, isLoading, error, refetch } = usePolls(100)
   const [showAll, setShowAll] = useState(false)
+  useEffect(() => {
+    const sync = () => setShowAll(new URLSearchParams(window.location.search).get('view') === 'all')
+    sync()
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
+  }, [])
+  const changeView = (all: boolean) => {
+    setShowAll(all)
+    const url = new URL(window.location.href)
+    if (all) url.searchParams.set('view', 'all')
+    else url.searchParams.delete('view')
+    window.history.pushState(null, '', url)
+  }
   const visiblePolls = selectHomePolls(polls, showAll)
 
   return (
@@ -191,10 +204,10 @@ export default function HomePage() {
         className="dh-page-header dh-page-header--home"
       >
         <div className="dh-page-header__row"><div className="dh-page-header__text"><h1 className="dh-page-header__title">
-          <span className="text-[var(--dh-ink)]">Pollr</span>
+          Try a public poll on Platform.
         </h1>
         <p className="dh-page-header__lede">
-          Public polls on Dash Platform Testnet. Browse questions and results freely; sign in to create a poll or vote.
+          Pollr is a Platform demo app: ask a question, share its link and record votes on Testnet. Reading is free. Creating or voting uses a Testnet identity; data may reset.
         </p>
         </div><div className="dh-page-header__actions"><Link href="/create">
           <Button variant="primary" size="lg" className="gap-2">
@@ -203,6 +216,22 @@ export default function HomePage() {
           </Button>
         </Link></div></div>
       </motion.div>
+
+      <section className="dh-card" aria-labelledby="demo-title">
+        <p className="text-sm text-[var(--dh-ink-2)] mb-2">Illustrative example · not a live poll</p>
+        <h2 id="demo-title" className="dh-section__title">Which day works for our meetup?</h2>
+        <div className="grid gap-6 md:grid-cols-2 mt-4">
+          <div>
+            <p className="text-[var(--dh-ink-2)] mb-3">Give your group a clear question and a few choices.</p>
+            <ul className="divide-y divide-[var(--dh-line)]"><li className="py-2">Saturday morning</li><li className="py-2">Sunday afternoon</li></ul>
+          </div>
+          <ol className="list-decimal pl-5 space-y-2 text-[var(--dh-ink-2)]">
+            <li>Create the poll and choose a closing date.</li>
+            <li>Share its public link with your group.</li>
+            <li>See each choice’s vote count and share of the total.</li>
+          </ol>
+        </div>
+      </section>
 
       {/* Recent polls */}
       <div>
@@ -213,11 +242,8 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Browse the latest 100 polls, including the archive. Open questions come first; obvious test questions are listed last. No polls are hidden.</p>
-        {!isLoading && polls.length > 0 && polls.every(({ poll }) => isPollClosed(poll)) && (
-          <p className="dh-notice mb-4">No open polls right now. Browse the results below, or create a question for your community. These are real Testnet records; some are practice polls with no votes.</p>
-        )}
-        <div className="dh-seg mb-4" aria-label="Poll order"><button type="button" aria-pressed={!showAll} onClick={() => setShowAll(false)}>Community first</button><button type="button" aria-pressed={showAll} onClick={() => setShowAll(true)}>Open and newest</button></div>
+        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Community questions from the latest 100 records, with open polls and participation first. Automated and practice records are kept in the full archive.</p>
+        <div className="dh-seg mb-4" aria-label="Poll view"><button type="button" aria-pressed={!showAll} onClick={() => changeView(false)}>Community</button><button type="button" aria-pressed={showAll} onClick={() => changeView(true)}>Full archive</button></div>
         <PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} />
       </div>
     </div>

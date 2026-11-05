@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSdk } from '@/contexts/sdk-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/ui/spinner'
 import { X } from 'lucide-react'
 import { truncateId } from '@/lib/utils'
 
@@ -187,9 +186,9 @@ export function LoginModal() {
                     </Dialog.Description>
 
                     <div className="mt-4 space-y-3 text-sm text-[var(--dh-ink-2)]">
-                      <h2 className="dh-section__title text-[var(--dh-ink)]">New to Platform?</h2>
+                      <p><strong>One identity, separate app authorization.</strong> Your Testnet Platform identity and credits can be reused in Pollr, Forge and Yappr. Each app needs its own sign-in; app passwords and passkeys are not shared.</p><h2 className="dh-section__title text-[var(--dh-ink)]">New to Platform?</h2>
                       <ol className="list-decimal pl-5 space-y-2">
-                        <li><a className="text-[var(--dh-brand-ink)] underline" href="https://bridge.thepasta.org/?network=testnet" data-family="bridge" data-network="testnet">Create a Testnet identity in Bridge →</a> Keep its key backup private.</li>
+                        <li><a className="text-[var(--dh-brand-ink)] underline" href="https://bridge.thepasta.org/?mode=create&journey=start&network=testnet" data-family="bridge" data-path="/?mode=create&journey=start" data-network="testnet">Create a Testnet identity in Bridge →</a> Keep its key backup private.</li>
                         <li>When bridge gives you a deposit address, <a className="text-[var(--dh-brand-ink)] underline" href="https://faucet.dashhq.org/?network=testnet" data-family="faucet" data-network="testnet">get free test funds from Faucet →</a>, then finish registration in Bridge.</li>
                         <li>Return here with the identity ID (a username is optional) and its HIGH or CRITICAL authentication key in WIF format.</li>
                       </ol>
