@@ -185,6 +185,8 @@ export function LoginModal() {
                       Reading is free. Sign in to create a poll or vote.
                     </Dialog.Description>
 
+                    <Link href="/" onClick={() => handleOpenChange(false)} className="inline-flex min-h-10 items-center text-sm text-[var(--dh-brand-ink)] underline">Browse polls without signing in →</Link>
+                    <p className="dh-field__label mt-4">Method: Private key (WIF)</p>
                     <dashhq-signin-help
                       className="mt-4"
                       product="pollr" network="testnet" asks="key"
@@ -192,7 +194,6 @@ export function LoginModal() {
                       why="It signs the polls you create and your votes."
                       kept-note="Your signing key is not encrypted. Use a dedicated Testnet identity; this key can authorize actions beyond Pollr."
                     />
-                    <Link href="/" onClick={() => handleOpenChange(false)} className="inline-flex min-h-10 items-center text-sm text-[var(--dh-brand-ink)] underline">Browse polls without signing in →</Link>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                       {!isReady && (
                         <div className="dh-card px-3 py-2 text-sm text-[var(--dh-ink-2)]">
@@ -268,7 +269,7 @@ export function LoginModal() {
                           htmlFor="remember-me"
                           className="dh-field__label"
                         >
-                          Keep my key on this device
+                          Keep me signed in in this browser
                         </label>
                         <Switch.Root
                           id="remember-me"
