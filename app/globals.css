@@ -53,7 +53,7 @@
   }
 }
 
-html:root { --dh-act: #0F766E; --dh-act-hover: #115E59; --dh-act-ink: #FFFFFF; }
+html:root { --dh-accent: var(--dh-accent-pollr); }
 body { background: var(--dh-page); color: var(--dh-ink); font-family: var(--dh-font); font-size: 15px; }
 h1, h2 { font-stretch: 110%; letter-spacing: -.015em; }
 :focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }

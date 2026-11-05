@@ -28,13 +28,14 @@ export default function RootLayout({
         <script src={`${basePath}/dashhq/dashhq-shell.js`} />
         <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-tokens.css`} />
         <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-shell.css`} />
+        <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-components.css`} />
 
         <meta
           httpEquiv="Content-Security-Policy"
           content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:; child-src 'self' blob:"
         />
       </head>
-      <body className="font-sans h-full bg-[var(--dh-surface)]">
+      <body className="font-sans h-full bg-[var(--dh-page)]">
         <ErrorBoundary level="app">
           <Providers>
             <AppShell>

@@ -3,13 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
-import { useLoginModal } from '@/hooks/use-login-modal'
 import { Home, Plus, BarChart3, User } from 'lucide-react'
 
 export function MobileBottomNav() {
   const pathname = usePathname()
   const { user } = useAuth()
-  const loginModal = useLoginModal()
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -70,15 +68,7 @@ export function MobileBottomNav() {
             <User className="h-5 w-5" />
             <span className="text-xs font-medium">Profile</span>
           </Link>
-        ) : (
-          <button
-            onClick={loginModal.open}
-            className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-[var(--dh-ink-2)]"
-          >
-            <User className="h-5 w-5" />
-            <span className="text-xs font-medium">Sign in</span>
-          </button>
-        )}
+        ) : null}
       </div>
     </nav>
   )

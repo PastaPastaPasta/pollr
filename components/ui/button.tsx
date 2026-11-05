@@ -3,23 +3,23 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dh-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 interactive-scale',
+  'dh-btn',
   {
     variants: {
       variant: {
-        default: 'border border-[var(--dh-line-2)] bg-[var(--dh-surface)] text-[var(--dh-ink)] hover:bg-[var(--dh-hover)]',
-        action: 'bg-[var(--dh-act)] text-[var(--dh-act-ink)] hover:bg-[var(--dh-act-hover)]',
-        destructive: 'bg-red-500 text-white hover:bg-red-600',
-        outline: 'border border-[var(--dh-line-2)] bg-transparent hover:bg-[var(--dh-sunken)] dark:hover:bg-[var(--dh-surface)]',
-        secondary: 'bg-[var(--dh-sunken)] dark:bg-[var(--dh-surface)] text-[var(--dh-ink)] hover:bg-[var(--dh-line)] dark:hover:bg-[var(--dh-sunken)]',
-        ghost: 'hover:bg-[var(--dh-sunken)] dark:hover:bg-[var(--dh-surface)]',
-        link: 'text-[var(--dh-brand-ink)] underline-offset-4 hover:underline',
+        default: 'dh-btn--secondary',
+        action: 'dh-btn--primary',
+        destructive: 'dh-btn--destructive',
+        outline: 'dh-btn--secondary',
+        secondary: 'dh-btn--secondary',
+        ghost: 'dh-btn--quiet',
+        link: 'dh-btn--link',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-[34px] px-3 text-sm',
-        lg: 'h-12 px-6',
-        icon: 'h-10 w-10',
+        default: '',
+        sm: 'dh-btn--sm',
+        lg: 'dh-btn--lg',
+        icon: 'dh-btn--icon',
       },
     },
     defaultVariants: {

@@ -141,7 +141,7 @@ function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollList
 
   if (error) {
     return (
-      <div className="text-center py-16">
+      <div className="dh-empty">
         <p className="text-[var(--dh-bad)] mb-2">{error}</p>
         <p className="text-sm text-[var(--dh-ink-2)]">Please check your connection and try again.</p>
         <Button variant="outline" className="mt-4" onClick={onRetry}>Try again</Button>
@@ -154,12 +154,12 @@ function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollList
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-center py-16"
+        className="dh-empty"
       >
         <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
-        <p className="text-[var(--dh-ink-2)] mb-2">No polls in this view</p>
+        <p className="text-[var(--dh-ink-2)] mb-2">Ask the first question</p>
         <p className="text-sm text-[var(--dh-ink-2)]">
-          Try all recent polls, or create a poll of your own.
+          Pollr records public questions and votes on Dash Platform Testnet. Start with a clear question, such as “Which day works for our meetup?”, add a few choices, and share the poll.
         </p>
       </motion.div>
     )
@@ -212,9 +212,12 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Open polls first. Obvious test names in questions or author usernames are hidden by default from the latest 100 records. Nothing is deleted.</p>
-        <Button variant="outline" className="mb-4" onClick={() => setShowAll(!showAll)}>
-          {showAll ? 'Hide test content' : 'Show all recent polls (including tests)'}
+        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Browse the latest 100 polls, including the archive. Open questions come first; obvious test questions are listed last. No polls are hidden.</p>
+        {!isLoading && polls.length > 0 && polls.every(({ poll }) => isPollClosed(poll)) && (
+          <p className="dh-notice mb-4">No open polls right now. Browse the results below, or create a question for your community. These are real Testnet records; some are practice polls with no votes.</p>
+        )}
+        <Button variant="outline" className="mb-4" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
+          {showAll ? 'Prioritize community questions' : 'Sort all polls by open and newest'}
         </Button>
         <PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} />
       </div>
