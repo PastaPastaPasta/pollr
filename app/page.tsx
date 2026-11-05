@@ -187,12 +187,12 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center py-12"
+        className="dh-page-header"
       >
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">
+        <h1 className="dh-page-header__title">
           <span className="text-[var(--dh-ink)]">Pollr</span>
         </h1>
-        <p className="text-lg text-[var(--dh-ink-2)] mb-8 max-w-md mx-auto">
+        <p className="dh-page-header__lede">
           Public polls on Dash Platform Testnet. Browse questions and results freely; sign in to create a poll or vote.
         </p>
         <Link href="/create">
