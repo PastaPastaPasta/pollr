@@ -171,7 +171,7 @@ export function LoginModal() {
                     {/* Close button */}
                     <Dialog.Close asChild>
                       <button
-                        className="absolute right-4 top-4 rounded-full p-1 text-[var(--dh-ink-2)] hover:bg-[var(--dh-sunken)] hover:text-[var(--dh-ink-2)] dark:hover:text-[var(--dh-ink-2)]"
+                        className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-md text-[var(--dh-ink-2)] hover:bg-[var(--dh-sunken)] hover:text-[var(--dh-ink-2)] dark:hover:text-[var(--dh-ink-2)]"
                         aria-label="Close"
                       >
                         <X className="h-4 w-4" />
@@ -269,7 +269,7 @@ export function LoginModal() {
                           disabled={isLoading || !isReady}
                           className="relative h-6 w-11 cursor-pointer rounded-full bg-[var(--dh-line)] transition-colors data-[state=checked]:bg-[var(--dh-brand-fill)]"
                         >
-                          <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-[var(--dh-surface)] shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
+                          <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
                         </Switch.Root>
                       </div>
 

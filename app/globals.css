@@ -58,5 +58,5 @@ body { background: var(--dh-page); color: var(--dh-ink); font-family: var(--dh-f
 h1, h2 { font-stretch: 110%; letter-spacing: -.015em; }
 :focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
 @media (max-width: 767px) { dashhq-bar > [slot="nav"] { display: none; } }
-@media (pointer: coarse) { input, textarea, select { font-size: 16px; } button { min-height: 42px; } }
+@media (pointer: coarse) { input, textarea, select { font-size: 16px; } button:not([role="switch"]) { min-height: 42px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; } }
