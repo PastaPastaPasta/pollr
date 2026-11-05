@@ -144,11 +144,9 @@ export function PollCard({
           </div>
         </div>
         <h3 className="mt-3 text-xl font-semibold text-[var(--dh-ink)] dark:text-white">
-          {isInteractive ? poll.question : (
-            <Link href={`/poll?id=${poll.$id}`} className="after:absolute after:inset-0 after:rounded-lg">
-              {poll.question}
-            </Link>
-          )}
+          <Link href={`/poll?id=${poll.$id}`} className={isInteractive ? 'hover:underline' : 'after:absolute after:inset-0 after:rounded-lg'}>
+            {poll.question}
+          </Link>
         </h3>
       </CardHeader>
 
