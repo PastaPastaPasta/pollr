@@ -171,7 +171,7 @@ export function LoginModal() {
                     {/* Close button */}
                     <Dialog.Close asChild>
                       <button
-                        className="dh-btn absolute right-3 top-3 flex items-center justify-center text-[var(--dh-ink-2)] hover:text-[var(--dh-ink-2)] dark:hover:text-[var(--dh-ink-2)]"
+                        className="dh-btn dh-btn--quiet dh-btn--icon absolute right-3 top-3"
                         aria-label="Close"
                       >
                         <X className="h-4 w-4" />
