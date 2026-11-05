@@ -168,19 +168,19 @@ export function LoginModal() {
                     className="dh-dialog relative max-h-[calc(100dvh-32px)] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Close button */}
-                    <Dialog.Close asChild>
-                      <button
-                        className="dh-btn dh-btn--quiet dh-btn--icon absolute right-3 top-3"
-                        aria-label="Close"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </Dialog.Close>
-
-                    <Dialog.Title className="dh-dialog__title">
-                      Sign in to Pollr
-                    </Dialog.Title>
+                    <div className="dh-dialog__head">
+                      <Dialog.Title className="dh-dialog__title">
+                        Sign in to Pollr
+                      </Dialog.Title>
+                      <Dialog.Close asChild>
+                        <button
+                          className="dh-btn dh-btn--quiet dh-btn--icon"
+                          aria-label="Close"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </Dialog.Close>
+                    </div>
                     <Dialog.Description className="dh-dialog__lede">
                       Reading is free. Sign in to create a poll or vote.
                     </Dialog.Description>
