@@ -118,7 +118,7 @@ export function LoginModal() {
       setLookupError(null)
       close()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to login')
+      setError(err instanceof Error ? err.message : 'Could not sign in')
     } finally {
       setIsLoading(false)
     }
@@ -165,29 +165,29 @@ export function LoginModal() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900"
+                    className="relative w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto rounded-lg bg-[var(--dh-surface)] p-6 shadow-xl"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Close button */}
                     <Dialog.Close asChild>
                       <button
-                        className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                        className="absolute right-4 top-4 rounded-full p-1 text-[var(--dh-ink-2)] hover:bg-[var(--dh-sunken)] hover:text-[var(--dh-ink-2)] dark:hover:text-[var(--dh-ink-2)]"
                         aria-label="Close"
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </Dialog.Close>
 
-                    <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Login to Pollr
+                    <Dialog.Title className="text-lg font-semibold text-[var(--dh-ink)] dark:text-white">
+                      Sign in to Pollr
                     </Dialog.Title>
-                    <Dialog.Description className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Enter your Dash identity ID or DPNS username and your private key.
+                    <Dialog.Description className="mt-1 text-sm text-[var(--dh-ink-2)]">
+                      Use your Testnet identity and its private key to create polls and vote. Browsing needs no sign-in.
                     </Dialog.Description>
 
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                       {!isReady && (
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-300">
+                        <div className="rounded-xl border border-[var(--dh-line)] bg-[var(--dh-page)] px-3 py-2 text-sm text-[var(--dh-ink-2)] dark:border-[var(--dh-line-2)] dark:bg-[var(--dh-sunken)]">
                           Connecting to Dash Platform...
                         </div>
                       )}
@@ -196,12 +196,15 @@ export function LoginModal() {
                       <div className="space-y-2">
                         <label
                           htmlFor="identity-id"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          className="text-sm font-medium text-[var(--dh-ink-2)]"
                         >
-                          Identity ID or DPNS Username
+                          Identity ID or DPNS name
                         </label>
                         <Input
                           id="identity-id"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          aria-invalid={Boolean(lookupError)}
                           type="text"
                           placeholder="Enter your identity ID or name.dash"
                           value={identityInput}
@@ -210,17 +213,17 @@ export function LoginModal() {
                           required
                         />
                         {isLookingUp && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-[var(--dh-ink-2)]">
                             Resolving identity...
                           </p>
                         )}
                         {!isLookingUp && resolvedIdentity && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-[var(--dh-ink-2)]">
                             Signing in as {resolvedIdentity.dpnsUsername || truncateId(resolvedIdentity.identityId)}
                           </p>
                         )}
                         {!isLookingUp && lookupError && (
-                          <p className="text-xs text-red-500">{lookupError}</p>
+                          <p className="text-xs text-[var(--dh-bad)]">{lookupError}</p>
                         )}
                       </div>
 
@@ -228,12 +231,16 @@ export function LoginModal() {
                       <div className="space-y-2">
                         <label
                           htmlFor="private-key"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          className="text-sm font-medium text-[var(--dh-ink-2)]"
                         >
-                          Private Key
+                          Private key (WIF)
                         </label>
                         <Input
                           id="private-key"
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          aria-describedby="key-hint"
                           type="password"
                           placeholder="Enter your private key (WIF)"
                           value={privateKey}
@@ -243,43 +250,53 @@ export function LoginModal() {
                         />
                       </div>
 
+                      <p id="key-hint" className="text-xs text-[var(--dh-ink-2)]">
+                        Your key signs actions in this browser. Use a Testnet key only, never a key holding real funds.
+                      </p>
+
                       {/* Remember Me */}
                       <div className="flex items-center justify-between">
                         <label
                           htmlFor="remember-me"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          className="text-sm font-medium text-[var(--dh-ink-2)]"
                         >
-                          Remember me
+                          Keep my key on this device
                         </label>
                         <Switch.Root
                           id="remember-me"
                           checked={rememberMe}
                           onCheckedChange={setRememberMe}
                           disabled={isLoading || !isReady}
-                          className="relative h-6 w-11 cursor-pointer rounded-full bg-gray-200 transition-colors data-[state=checked]:bg-pollr-500 dark:bg-gray-700"
+                          className="relative h-6 w-11 cursor-pointer rounded-full bg-[var(--dh-line)] transition-colors data-[state=checked]:bg-[var(--dh-sunken)]0"
                         >
-                          <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
+                          <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-[var(--dh-surface)] shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
                         </Switch.Root>
                       </div>
 
+                      <p className="text-xs text-[var(--dh-ink-2)]" aria-live="polite">
+                        {rememberMe
+                          ? 'Your key will stay in this browser’s local storage until you sign out. It is not encrypted.'
+                          : 'Your key stays in this tab’s session storage until the tab closes or you sign out. It is not encrypted.'}
+                      </p>
+
                       {/* Error message */}
                       {error && (
-                        <p className="text-sm text-red-500">{error}</p>
+                        <p className="text-sm text-[var(--dh-bad)]">{error}</p>
                       )}
 
                       {/* Submit button */}
                       <Button
                         type="submit"
-                        className="w-full bg-gradient-pollr hover:opacity-90"
+                        variant="outline" className="w-full"
                         disabled={!canSubmit}
                       >
                         {isLoading ? (
                           <span className="flex items-center gap-2">
                             <Spinner size="xs" className="border-white" />
-                            Logging in...
+                            Signing in…
                           </span>
                         ) : (
-                          'Login'
+                          'Sign in'
                         )}
                       </Button>
                     </form>

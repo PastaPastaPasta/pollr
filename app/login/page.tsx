@@ -35,9 +35,9 @@ export default function LoginPage() {
       className="flex flex-col items-center justify-center py-24"
     >
       <h1 className="text-3xl font-bold mb-4">
-        <span className="text-gradient">Pollr</span>
+        <span className="text-[var(--dh-ink)]">Pollr</span>
       </h1>
-      <p className="text-gray-500 dark:text-gray-400 text-sm">
+      <p className="text-[var(--dh-ink-2)] text-sm">
         Sign in to create and vote on polls
       </p>
     </motion.div>

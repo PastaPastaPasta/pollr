@@ -11,7 +11,7 @@ function CreatePollPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+      <h1 className="text-2xl font-bold text-[var(--dh-ink)] dark:text-white mb-6">
         Create a Poll
       </h1>
       <CreatePollForm />

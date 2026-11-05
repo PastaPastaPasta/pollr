@@ -23,12 +23,18 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
+        {/* Blocking external script sets the shared theme before first paint. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src={`${basePath}/dashhq/dashhq-shell.js`} />
+        <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-tokens.css`} />
+        <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-shell.css`} />
+
         <meta
           httpEquiv="Content-Security-Policy"
           content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:; child-src 'self' blob:"
         />
       </head>
-      <body className="font-sans h-full bg-white dark:bg-neutral-900">
+      <body className="font-sans h-full bg-[var(--dh-surface)]">
         <ErrorBoundary level="app">
           <Providers>
             <AppShell>

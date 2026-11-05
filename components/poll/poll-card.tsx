@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
@@ -49,6 +49,11 @@ export function PollCard({
   isInteractive = false,
   ownerUsername,
 }: PollCardProps) {
+  const authorPath = ownerUsername
+    ? `/dpns?name=${encodeURIComponent(ownerUsername)}&network=testnet`
+    : `/identity?id=${encodeURIComponent(poll.$ownerId)}&network=testnet`
+  const [authorHref, setAuthorHref] = useState(`https://explorer.dashhq.org${authorPath}`)
+  useEffect(() => { setAuthorHref(window.dashhq.href('explorer', authorPath)) }, [authorPath])
   const [draftChoices, setDraftChoices] = useState<number[]>([])
 
   // null means "we could not find out", which is not the same as "none" — treat the ballot as
@@ -111,26 +116,26 @@ export function PollCard({
   const displayName = ownerUsername || truncateId(poll.$ownerId)
 
   const cardContent = (
-    <Card className={!isInteractive ? 'transition-shadow hover:shadow-md' : ''}>
+    <Card className="relative hover:border-[var(--dh-line-2)]">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2 min-w-0">
             {/* Avatar circle with first char */}
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-pollr-100 text-sm font-semibold text-pollr-700 dark:bg-pollr-900 dark:text-pollr-300">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--dh-sunken)] text-sm font-semibold text-[var(--dh-brand-ink)] dark:text-[var(--dh-brand-ink)]">
               {displayName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+              <a href={authorHref} className="relative z-10 block truncate text-sm font-medium text-[var(--dh-brand-ink)] hover:underline">
                 {displayName}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              </a>
+              <p className="text-xs text-[var(--dh-ink-2)]">
                 {createdAt}
               </p>
             </div>
           </div>
           <div className="flex flex-shrink-0 items-center gap-1.5">
             {isClosed && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--dh-sunken)] px-2.5 py-0.5 text-xs font-medium text-[var(--dh-ink-2)] dark:text-[var(--dh-ink-2)]">
                 <Lock className="h-3 w-3" />
                 Closed
               </span>
@@ -138,8 +143,12 @@ export function PollCard({
             <PollTypeBadge multiChoice={poll.multiChoice} />
           </div>
         </div>
-        <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
-          {poll.question}
+        <h3 className="mt-3 text-xl font-semibold text-[var(--dh-ink)] dark:text-white">
+          {isInteractive ? poll.question : (
+            <Link href={`/poll?id=${poll.$id}`} className="after:absolute after:inset-0 after:rounded-lg">
+              {poll.question}
+            </Link>
+          )}
         </h3>
       </CardHeader>
 
@@ -165,22 +174,22 @@ export function PollCard({
 
       <CardFooter className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-[var(--dh-ink-2)]">
             {voteCountLabel(totalVotes, isClosed, poll.multiChoice)}
           </span>
           {endsLabel && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-[var(--dh-ink-2)]">
               {endsLabel}
             </span>
           )}
           {hasVoted && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-pollr-600 dark:text-pollr-400">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--dh-brand-ink)]">
               <CheckCircle2 className="h-3.5 w-3.5" />
               You voted
             </span>
           )}
           {!ownChoicesKnown && !isClosed && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-[var(--dh-ink-2)]">
               Couldn&apos;t check whether you&apos;ve already voted
             </span>
           )}
@@ -188,6 +197,7 @@ export function PollCard({
 
         {canVote && poll.multiChoice && (
           <Button
+            variant="action"
             size="sm"
             onClick={handleVote}
             disabled={pendingDraftChoices.length === 0 || isVoting}
@@ -204,7 +214,7 @@ export function PollCard({
         )}
 
         {canVote && !poll.multiChoice && isVoting && (
-          <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-2 text-sm text-[var(--dh-ink-2)]">
             <Spinner size="xs" />
             Voting...
           </span>
@@ -213,21 +223,13 @@ export function PollCard({
     </Card>
   )
 
-  const content = isInteractive ? (
-    cardContent
-  ) : (
-    <Link href={`/poll?id=${poll.$id}`} className="block">
-      {cardContent}
-    </Link>
-  )
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {content}
+      {cardContent}
     </motion.div>
   )
 }

@@ -41,8 +41,8 @@ export function PollOption({
       disabled={disabled}
       className={`relative flex w-full items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 text-left transition-colors ${
         isSelected
-          ? 'border-pollr-500 bg-pollr-50/50 dark:border-pollr-400 dark:bg-pollr-950/50'
-          : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
+          ? 'border-[var(--dh-brand)] bg-[var(--dh-sunken)]/50 dark:bg-[var(--dh-sunken)]/50'
+          : 'border-[var(--dh-line)] hover:border-[var(--dh-line-2)] dark:hover:border-[var(--dh-line-2)]'
       } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
     >
       {/* Results bar (behind content) */}
@@ -57,12 +57,12 @@ export function PollOption({
           <div
             className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
               isSelected
-                ? 'border-pollr-500 bg-pollr-500'
-                : 'border-gray-300 dark:border-gray-600'
+                ? 'border-[var(--dh-brand)] bg-[var(--dh-sunken)]0'
+                : 'border-[var(--dh-line-2)]'
             }`}
           >
             {isSelected && (
-              <div className="h-2 w-2 rounded-full bg-white" />
+              <div className="h-2 w-2 rounded-full bg-[var(--dh-surface)]" />
             )}
           </div>
         ) : (
@@ -70,8 +70,8 @@ export function PollOption({
           <div
             className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
               isSelected
-                ? 'border-pollr-500 bg-pollr-500'
-                : 'border-gray-300 dark:border-gray-600'
+                ? 'border-[var(--dh-brand)] bg-[var(--dh-sunken)]0'
+                : 'border-[var(--dh-line-2)]'
             }`}
           >
             {isSelected && (
@@ -90,15 +90,15 @@ export function PollOption({
       </div>
 
       {/* Option text */}
-      <span className="relative z-10 flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+      <span className="relative z-10 flex-1 text-sm font-medium text-[var(--dh-ink)]">
         {text}
       </span>
 
       {/* Vote count / percentage */}
       {showResults && (
-        <span className="relative z-10 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
+        <span className="relative z-10 flex-shrink-0 text-sm font-medium text-[var(--dh-ink-2)]">
           {percentage}%
-          <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">
+          <span className="ml-1 text-xs text-[var(--dh-ink-2)]">
             ({voteCount})
           </span>
         </span>

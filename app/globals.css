@@ -8,7 +8,7 @@
     --foreground: 222.2 84% 4.9%;
   }
 
-  .dark {
+  [data-theme="dark"] {
     --background: 0 0% 7%;
     --foreground: 210 40% 98%;
   }
@@ -29,11 +29,11 @@
   }
 
   .glass-effect {
-    @apply backdrop-blur-xl bg-white/80 dark:bg-neutral-900/80;
+    background: var(--dh-surface);
   }
 
   .glass-border {
-    @apply border border-gray-200/50 dark:border-gray-800/50;
+    border: 1px solid var(--dh-line);
   }
 
   .interactive-scale {
@@ -41,7 +41,7 @@
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-pollr-500 to-pollr-600 bg-clip-text text-transparent;
+    color: var(--dh-ink);
   }
 
   .safe-area-inset-bottom {
@@ -52,3 +52,11 @@
     padding-top: env(safe-area-inset-top, 0);
   }
 }
+
+html:root { --dh-act: #0F766E; --dh-act-hover: #115E59; --dh-act-ink: #FFFFFF; }
+body { background: var(--dh-page); color: var(--dh-ink); font-family: var(--dh-font); font-size: 15px; }
+h1, h2 { font-stretch: 110%; letter-spacing: -.015em; }
+:focus-visible { outline: 2px solid var(--dh-focus); outline-offset: 2px; }
+@media (max-width: 767px) { dashhq-bar > [slot="nav"] { display: none; } }
+@media (pointer: coarse) { input, textarea, select { font-size: 16px; } button { min-height: 42px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; } }

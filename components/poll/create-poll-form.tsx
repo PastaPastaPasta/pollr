@@ -123,7 +123,7 @@ export function CreatePollForm() {
           <div className="space-y-2">
             <label
               htmlFor="question"
-              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="text-sm font-medium text-[var(--dh-ink-2)]"
             >
               Question
             </label>
@@ -139,8 +139,8 @@ export function CreatePollForm() {
               <span
                 className={`text-xs ${
                   question.length >= MAX_QUESTION_LENGTH
-                    ? 'text-red-500'
-                    : 'text-gray-400'
+                    ? 'text-[var(--dh-bad)]'
+                    : 'text-[var(--dh-ink-2)]'
                 }`}
               >
                 {question.length}/{MAX_QUESTION_LENGTH}
@@ -150,7 +150,7 @@ export function CreatePollForm() {
 
           {/* Options */}
           <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="text-sm font-medium text-[var(--dh-ink-2)]">
               Options
             </label>
             {options.map((option, index) => (
@@ -164,7 +164,7 @@ export function CreatePollForm() {
                     maxLength={MAX_OPTION_LENGTH}
                   />
                   {option.length > MAX_OPTION_LENGTH * 0.8 && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dh-ink-2)]">
                       {option.length}/{MAX_OPTION_LENGTH}
                     </span>
                   )}
@@ -176,7 +176,7 @@ export function CreatePollForm() {
                     size="icon"
                     onClick={() => removeOption(index)}
                     disabled={isSubmitting}
-                    className="flex-shrink-0 text-gray-400 hover:text-red-500"
+                    className="flex-shrink-0 text-[var(--dh-ink-2)] hover:text-[var(--dh-bad)]"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -201,7 +201,7 @@ export function CreatePollForm() {
 
           {/* Poll Type */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="text-sm font-medium text-[var(--dh-ink-2)]">
               Poll Type
             </label>
             <div className="flex gap-2">
@@ -232,16 +232,16 @@ export function CreatePollForm() {
           <div className="space-y-2">
             <label
               htmlFor="duration"
-              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="text-sm font-medium text-[var(--dh-ink-2)]"
             >
-              Close Time <span className="text-gray-400">(optional)</span>
+              Close Time <span className="text-[var(--dh-ink-2)]">(optional)</span>
             </label>
             <select
               id="duration"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 focus:border-pollr-500 focus:outline-none disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="w-full rounded-xl border border-[var(--dh-line)] bg-[var(--dh-surface)] px-4 py-2 text-sm text-[var(--dh-ink)] focus-visible:ring-[var(--dh-focus)] focus:outline-none disabled:opacity-50 dark:border-[var(--dh-line-2)] dark:text-[var(--dh-ink)]"
             >
               {DURATION_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -249,7 +249,7 @@ export function CreatePollForm() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-[var(--dh-ink-2)]">
               Voting is hidden once the close time passes. This is advisory — it is not enforced
               on-chain.
             </p>
@@ -258,7 +258,8 @@ export function CreatePollForm() {
           {/* Submit */}
           <Button
             type="submit"
-            className="w-full bg-gradient-pollr hover:opacity-90"
+            variant="action"
+            className="w-full"
             disabled={!isValid || isSubmitting}
           >
             {isSubmitting ? (

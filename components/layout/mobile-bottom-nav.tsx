@@ -17,9 +17,9 @@ export function MobileBottomNav() {
   }
 
   const navItems = [
-    { href: '/', label: 'Home', icon: Home },
+    { href: '/', label: 'Polls', icon: Home },
     { href: '/create', label: 'Create', icon: Plus, highlight: true },
-    { href: '/my-polls', label: 'My Polls', icon: BarChart3 },
+    { href: '/my-polls', label: 'My polls', icon: BarChart3 },
   ]
 
   return (
@@ -35,16 +35,16 @@ export function MobileBottomNav() {
               href={item.href}
               className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 ${
                 active
-                  ? 'text-pollr-500'
-                  : 'text-gray-500 dark:text-gray-400'
+                  ? 'text-[var(--dh-brand-ink)]'
+                  : 'text-[var(--dh-ink-2)]'
               }`}
             >
               {item.highlight ? (
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-md ${
                     active
-                      ? 'bg-pollr-500 text-white'
-                      : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                      ? 'bg-[var(--dh-brand-soft)] text-[var(--dh-brand-ink)]'
+                      : 'bg-[var(--dh-line)] text-[var(--dh-ink-2)] dark:text-[var(--dh-ink-2)]'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -52,7 +52,7 @@ export function MobileBottomNav() {
               ) : (
                 <Icon className="h-5 w-5" />
               )}
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-xs font-medium">{item.label}</span>
             </Link>
           )
         })}
@@ -63,20 +63,20 @@ export function MobileBottomNav() {
             href="/my-polls"
             className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 ${
               pathname === '/my-polls'
-                ? 'text-pollr-500'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'text-[var(--dh-brand-ink)]'
+                : 'text-[var(--dh-ink-2)]'
             }`}
           >
             <User className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Profile</span>
+            <span className="text-xs font-medium">Profile</span>
           </Link>
         ) : (
           <button
             onClick={loginModal.open}
-            className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400"
+            className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-[var(--dh-ink-2)]"
           >
             <User className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Login</span>
+            <span className="text-xs font-medium">Sign in</span>
           </button>
         )}
       </div>

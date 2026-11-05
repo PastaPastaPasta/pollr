@@ -16,7 +16,7 @@ function MyPollsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-[var(--dh-ink)] dark:text-white">
           My Polls
         </h1>
         <Link href="/create">
@@ -38,8 +38,8 @@ function MyPollsPage() {
           animate={{ opacity: 1 }}
           className="text-center py-16"
         >
-          <BarChart3 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 mb-2">
+          <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+          <p className="text-[var(--dh-ink-2)] mb-2">
             You haven&apos;t created any polls yet
           </p>
           <Link href="/create">

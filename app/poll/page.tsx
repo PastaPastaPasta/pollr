@@ -46,9 +46,9 @@ function PollPageContent() {
   if (!pollId) {
     return (
       <div className="text-center py-16">
-        <AlertCircle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500">No poll ID provided</p>
-        <Link href="/" className="text-pollr-500 hover:text-pollr-600 text-sm mt-2 inline-block">
+        <AlertCircle className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+        <p className="text-[var(--dh-ink-2)]">No poll ID provided</p>
+        <Link href="/" className="text-[var(--dh-brand-ink)] hover:text-[var(--dh-brand-ink)] text-sm mt-2 inline-block">
           Back to polls
         </Link>
       </div>
@@ -57,7 +57,7 @@ function PollPageContent() {
 
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+      <div className="flex flex-col items-center justify-center py-16 text-[var(--dh-ink-2)]">
         <Spinner size="lg" />
         <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
       </div>
@@ -75,11 +75,11 @@ function PollPageContent() {
         animate={{ opacity: 1 }}
         className="text-center py-16"
       >
-        <AlertCircle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 mb-2">
+        <AlertCircle className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+        <p className="text-[var(--dh-ink-2)] mb-2">
           {error || 'Poll not found'}
         </p>
-        <Link href="/" className="text-pollr-500 hover:text-pollr-600 text-sm">
+        <Link href="/" className="text-[var(--dh-brand-ink)] hover:text-[var(--dh-brand-ink)] text-sm">
           Back to polls
         </Link>
       </motion.div>
@@ -92,7 +92,7 @@ function PollPageContent() {
       <div className="flex items-center justify-between">
         <Link
           href="/"
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-1 text-sm text-[var(--dh-ink-2)] hover:text-[var(--dh-ink-2)] transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to polls

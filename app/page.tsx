@@ -120,7 +120,7 @@ interface PollListContentProps {
 function PollListContent({ isReady, isLoading, polls, error }: PollListContentProps) {
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+      <div className="flex flex-col items-center justify-center py-16 text-[var(--dh-ink-2)]">
         <Spinner size="lg" />
         <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
       </div>
@@ -140,8 +140,8 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
   if (error) {
     return (
       <div className="text-center py-16">
-        <p className="text-red-500 mb-2">{error}</p>
-        <p className="text-sm text-gray-400">Please check your connection and try again.</p>
+        <p className="text-[var(--dh-bad)] mb-2">{error}</p>
+        <p className="text-sm text-[var(--dh-ink-2)]">Please check your connection and try again.</p>
       </div>
     )
   }
@@ -153,9 +153,9 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
         animate={{ opacity: 1 }}
         className="text-center py-16"
       >
-        <BarChart3 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 mb-2">No polls yet</p>
-        <p className="text-sm text-gray-400 dark:text-gray-500">
+        <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+        <p className="text-[var(--dh-ink-2)] mb-2">No polls yet</p>
+        <p className="text-sm text-[var(--dh-ink-2)]">
           Be the first to create one!
         </p>
       </motion.div>
@@ -185,25 +185,25 @@ export default function HomePage() {
         className="text-center py-12"
       >
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          <span className="text-gradient">Pollr</span>
+          <span className="text-[var(--dh-ink)]">Pollr</span>
         </h1>
-        <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+        <p className="text-lg text-[var(--dh-ink-2)] mb-8 max-w-md mx-auto">
           Create and vote on decentralized polls. Powered by Dash Platform — no backend, fully on-chain.
         </p>
         <Link href="/create">
-          <Button size="lg" className="gap-2">
+          <Button variant="action" size="lg" className="gap-2">
             <Plus className="h-5 w-5" />
-            Create a Poll
+            Create a poll
           </Button>
         </Link>
       </motion.div>
 
-      {/* Recent Polls */}
+      {/* Recent polls */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="h-5 w-5 text-pollr-500" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Recent Polls
+          <BarChart3 className="h-5 w-5 text-[var(--dh-brand-ink)]" />
+          <h2 className="text-lg font-semibold text-[var(--dh-ink)] dark:text-white">
+            Recent polls
           </h2>
         </div>
 
