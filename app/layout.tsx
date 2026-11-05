@@ -8,7 +8,7 @@ import { AppShell } from '@/components/layout/app-shell'
 const basePath = process.env.BASE_PATH || ''
 
 export const metadata: Metadata = {
-  title: 'Pollr - Decentralized Polls on Dash Platform',
+  title: 'Pollr · dashhq',
   description: 'Create and vote on polls, powered by Dash Platform. No backend, fully decentralized.',
   icons: {
     icon: `${basePath}/favicon.ico`,

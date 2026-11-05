@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Switch from '@radix-ui/react-switch'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -182,9 +183,22 @@ export function LoginModal() {
                       Sign in to Pollr
                     </Dialog.Title>
                     <Dialog.Description className="mt-1 text-sm text-[var(--dh-ink-2)]">
-                      Use your Testnet identity and its private key to create polls and vote. Browsing needs no sign-in.
+                      Creating a poll or voting signs a public action with your Testnet identity and spends its credits. Reading polls and results is free.
                     </Dialog.Description>
 
+                    <div className="mt-4 space-y-3 text-sm text-[var(--dh-ink-2)]">
+                      <h2 className="font-semibold text-[var(--dh-ink)]">New to Platform?</h2>
+                      <ol className="list-decimal pl-5 space-y-2">
+                        <li><a className="text-[var(--dh-brand-ink)] underline" href="https://bridge.thepasta.org/?network=testnet" data-family="bridge" data-network="testnet">Create a Testnet identity in Bridge →</a> Keep its key backup private.</li>
+                        <li>When Bridge gives you a deposit address, <a className="text-[var(--dh-brand-ink)] underline" href="https://faucet.dashhq.org/?network=testnet" data-family="faucet" data-network="testnet">get free test funds from Faucet →</a>, then finish registration in Bridge.</li>
+                        <li>Return here with the identity ID (a username is optional) and its HIGH or CRITICAL authentication key in WIF format.</li>
+                      </ol>
+                      <p>Test funds have no cash value; Testnet data may reset.</p>
+                      <Link href="/" onClick={() => handleOpenChange(false)} className="inline-flex min-h-10 items-center text-[var(--dh-brand-ink)] underline">Browse polls without signing in →</Link>
+                    </div>
+                    <details className="mt-4">
+                      <summary className="cursor-pointer py-3 text-sm font-medium text-[var(--dh-ink)]">Use an existing signing key (advanced)</summary>
+                      <p className="text-sm text-[var(--dh-ink-2)]">Pollr currently requires a private key; wallet approval and an app-limited credential are not available. Use a dedicated Testnet identity. This key can authorize actions beyond Pollr. Never enter your recovery phrase, MASTER key or a key holding real funds.</p>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                       {!isReady && (
                         <div className="rounded-xl border border-[var(--dh-line)] bg-[var(--dh-page)] px-3 py-2 text-sm text-[var(--dh-ink-2)] dark:border-[var(--dh-line-2)] dark:bg-[var(--dh-sunken)]">
@@ -198,7 +212,7 @@ export function LoginModal() {
                           htmlFor="identity-id"
                           className="text-sm font-medium text-[var(--dh-ink-2)]"
                         >
-                          Identity ID or DPNS name
+                          Identity ID or username
                         </label>
                         <Input
                           id="identity-id"
@@ -300,6 +314,7 @@ export function LoginModal() {
                         )}
                       </Button>
                     </form>
+                    </details>
                   </motion.div>
                 </Dialog.Content>
               </motion.div>

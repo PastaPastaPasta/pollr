@@ -15,6 +15,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { voteService, applyCastVoteResult, type PollTally } from '@/lib/services/vote-service'
 import { logger } from '@/lib/logger'
 import { isPollClosed } from '@/lib/utils'
+import { selectHomePolls } from '@/lib/home-polls'
 import { reportCastVote } from '@/lib/vote-feedback'
 import toast from 'react-hot-toast'
 import type { EnrichedPoll } from '@/lib/services/poll-metadata-service'
@@ -115,9 +116,10 @@ interface PollListContentProps {
   isLoading: boolean
   polls: EnrichedPoll[]
   error: string | null
+  onRetry: () => void
 }
 
-function PollListContent({ isReady, isLoading, polls, error }: PollListContentProps) {
+function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollListContentProps) {
   if (!isReady) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-[var(--dh-ink-2)]">
@@ -142,6 +144,7 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
       <div className="text-center py-16">
         <p className="text-[var(--dh-bad)] mb-2">{error}</p>
         <p className="text-sm text-[var(--dh-ink-2)]">Please check your connection and try again.</p>
+        <Button variant="outline" className="mt-4" onClick={onRetry}>Try again</Button>
       </div>
     )
   }
@@ -154,9 +157,9 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
         className="text-center py-16"
       >
         <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
-        <p className="text-[var(--dh-ink-2)] mb-2">No polls yet</p>
+        <p className="text-[var(--dh-ink-2)] mb-2">No polls in this view</p>
         <p className="text-sm text-[var(--dh-ink-2)]">
-          Be the first to create one!
+          Try all recent polls, or create a poll of your own.
         </p>
       </motion.div>
     )
@@ -173,7 +176,9 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
 
 export default function HomePage() {
   const { isReady } = useSdk()
-  const { polls, isLoading, error } = usePolls()
+  const { polls, isLoading, error, refetch } = usePolls(100)
+  const [showAll, setShowAll] = useState(false)
+  const visiblePolls = selectHomePolls(polls, showAll)
 
   return (
     <div className="space-y-8">
@@ -188,7 +193,7 @@ export default function HomePage() {
           <span className="text-[var(--dh-ink)]">Pollr</span>
         </h1>
         <p className="text-lg text-[var(--dh-ink-2)] mb-8 max-w-md mx-auto">
-          Create and vote on decentralized polls. Powered by Dash Platform — no backend, fully on-chain.
+          Public polls on Dash Platform Testnet. Browse questions and results freely; sign in to create a poll or vote.
         </p>
         <Link href="/create">
           <Button variant="action" size="lg" className="gap-2">
@@ -203,11 +208,15 @@ export default function HomePage() {
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="h-5 w-5 text-[var(--dh-brand-ink)]" />
           <h2 className="text-lg font-semibold text-[var(--dh-ink)] dark:text-white">
-            Recent polls
+            Polls
           </h2>
         </div>
 
-        <PollListContent isReady={isReady} isLoading={isLoading} polls={polls} error={error} />
+        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Open polls first. Obvious test names in questions or author usernames are hidden by default from the latest 100 records. Nothing is deleted.</p>
+        <Button variant="outline" className="mb-4" onClick={() => setShowAll(!showAll)}>
+          {showAll ? 'Hide test content' : 'Show all recent polls (including tests)'}
+        </Button>
+        <PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} />
       </div>
     </div>
   )
