@@ -185,8 +185,6 @@ export function LoginModal() {
                       Reading is free. Sign in to create a poll or vote.
                     </Dialog.Description>
 
-                    <Link href="/" onClick={() => handleOpenChange(false)} className="inline-flex min-h-10 items-center text-sm text-[var(--dh-brand-ink)] underline">Browse polls without signing in →</Link>
-                    <p className="dh-field__label mt-4">Method: Private key (WIF)</p>
                     <dashhq-signin-help
                       className="mt-4"
                       product="pollr" network="testnet" asks="key"
@@ -310,6 +308,8 @@ export function LoginModal() {
                         )}
                       </Button>
                     </form>
+                    <Link href="/" onClick={() => handleOpenChange(false)} className="dh-link dh-link--go inline-flex min-h-10 items-center text-sm">Browse polls without signing in →</Link>
+
 
                   </motion.div>
                 </Dialog.Content>

@@ -18,7 +18,6 @@ const buttonVariants = cva(
       size: {
         default: '',
         sm: 'dh-btn--sm',
-        lg: '',
         icon: 'dh-btn--icon',
       },
     },
