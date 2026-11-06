@@ -16,6 +16,7 @@ const row = (id, question, username, endsAt, createdAt) => ({ poll: { $id: id, q
 const input = [row('closed', 'Lunch?', 'person.dash', 1, 4), row('real', 'Ship it?', 'e2e-user.dash', undefined, 5), row('normal', 'Contest winners?', 'person.dash', undefined, 2), row('test', 'Smoke test', 'person.dash', undefined, 7), row('open', 'Where next?', 'person.dash', Date.now() + 100000, 3)]
 assert.deepEqual(Array.from(selectHomePolls(input, false), r => r.poll.$id), ['open', 'normal', 'closed'])
 assert.equal(selectHomePolls(input, true).length, 3)
+assert.equal(selectHomePolls([row('placeholder', 'A Secondary poll', 'person.dash', undefined, 1)], false).length, 0)
 assert.equal(selectHomePolls([input[3]], false).length, 0, 'An all-test sample is not a community feed')
 assert.equal(selectHomePolls([row('hash', 'poll-ac39b08-7317', 'person.dash', undefined, 1)], false).length, 0)
 assert.equal(selectHomePolls([row('test-user', 'Meetup?', 'yappr-e2e-0.dash', undefined, 1)], false).length, 0)

@@ -192,7 +192,9 @@ export function LoginModal() {
                       why="It signs the polls you create and your votes."
                       kept-note="Your signing key is not encrypted. Use a dedicated Testnet identity; this key can authorize actions beyond Pollr."
                     />
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                    <p className="mt-4 text-sm text-[var(--dh-ink-2)]">Use a dedicated Testnet identity and keep the default tab-only session to limit how long this browser retains your key. Pollr currently supports private-key sign-in only.</p>
+                    <details className="mt-4"><summary className="dh-btn dh-btn--quiet cursor-pointer">Advanced: private key</summary>
+                    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                       {!isReady && (
                         <div className="dh-card px-3 py-2 text-sm text-[var(--dh-ink-2)]">
                           Connecting to Dash Platform…
@@ -307,7 +309,7 @@ export function LoginModal() {
                           'Sign in'
                         )}
                       </Button>
-                    </form>
+                    </form></details>
                     <Link href="/" onClick={() => handleOpenChange(false)} className="dh-link inline-flex min-h-10 items-center text-sm">Keep reading without signing in</Link>
 
 

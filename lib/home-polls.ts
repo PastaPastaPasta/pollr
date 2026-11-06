@@ -4,8 +4,8 @@ import { isPollClosed } from '@/lib/utils'
 const TEST_NAME = /(?:^|[\s_.-])(?:e2e|test|fixture|smoke)(?=$|[\s_.-]|\d)/i
 const HASH_SUFFIX = /(?:^|[\s_-])[a-f\d]{6,}(?:[-_]\d+)?(?:[?.!]|$)/i
 
-export function isPracticePoll({ poll, ownerUsername }: EnrichedPoll): boolean {
-  return TEST_NAME.test(poll.question) || HASH_SUFFIX.test(poll.question) ||
+export function isPracticePoll({ poll, ownerUsername }: Pick<EnrichedPoll, 'poll' | 'ownerUsername'>): boolean {
+  return /^(?:a\s+)?(?:secondary|sample|example)\s+poll[?.!]?$/i.test(poll.question.trim()) || TEST_NAME.test(poll.question) || HASH_SUFFIX.test(poll.question) ||
     TEST_NAME.test(ownerUsername ?? '') || HASH_SUFFIX.test((ownerUsername ?? '').replace(/\.dash$/i, ''))
 }
 

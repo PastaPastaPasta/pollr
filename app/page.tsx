@@ -15,6 +15,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { voteService, applyCastVoteResult, type PollTally } from '@/lib/services/vote-service'
 import { logger } from '@/lib/logger'
 import { isPollClosed } from '@/lib/utils'
+import { RecordedPolls } from '@/components/poll/recorded-polls'
 import { ExamplePoll } from '@/components/poll/example-poll'
 import { selectHomePolls } from '@/lib/home-polls'
 import { reportCastVote } from '@/lib/vote-feedback'
@@ -161,7 +162,7 @@ function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollList
         <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
         <p className="text-[var(--dh-ink-2)] mb-2">Your community’s questions go here</p>
         <p className="text-sm text-[var(--dh-ink-2)]">
-          No polls match this view in the latest 100 records. Try the browser example above or write a question for your group.
+          There are no new community polls in this sample. The recorded polls above remain available to inspect.
         </p>
       </motion.div>
     )
@@ -230,11 +231,11 @@ export default function HomePage() {
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="h-5 w-5 text-[var(--dh-brand-ink)]" />
           <h2 className="dh-section__title text-[var(--dh-ink)] dark:text-white">
-            Polls
+            Shared polls
           </h2>
         </div>
 
-        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Community questions from the latest 100 records, with open polls and participation first. The archive includes closed community polls. Automated and practice records are hidden unless you choose to include them.</p>
+        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Inspect the original polls and their recorded ballots. The archive shows all readable original polls. Automated and practice records stay hidden by default.</p>
         <div className="dh-seg mb-4" aria-label="Poll view"><button type="button" aria-pressed={!showAll} onClick={() => changeView(false)}>Community</button><button type="button" aria-pressed={showAll} onClick={() => changeView(true)}>Archive</button></div>
         {showAll && <label className="dh-check mb-4"><input type="checkbox" checked={showPractice} onChange={e => {
           setShowPractice(e.target.checked)
@@ -243,7 +244,8 @@ export default function HomePage() {
           else url.searchParams.delete('practice')
           window.history.pushState(null, '', url)
         }} /> Include automated and practice records</label>}
-        <PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} />
+        <RecordedPolls all={showAll} />
+        {(isLoading || error || visiblePolls.length > 0 || (showAll && showPractice)) && <div className="mt-6"><PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} /></div>}
       </div>
     </div>
   )

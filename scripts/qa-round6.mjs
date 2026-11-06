@@ -1,0 +1,114 @@
+import { chromium } from '../../../lab/node_modules/playwright/index.mjs'
+import { installQaGuard } from '../../../lab/qa-guard.mjs'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import assert from 'node:assert/strict'
+const root = new URL('../../../', import.meta.url).pathname
+const output = `${root}shots/r6-s4-journeys`
+await mkdir(output, { recursive: true })
+const browser = await chromium.launch({ headless: true })
+const report = { heads: Object.fromEntries(['pollr','forge','yappr'].map(site => [site,execFileSync('git',['-C',`${root}repos/${site}`,'rev-parse','HEAD'],{encoding:'utf8'}).trim()])), cases: [] }
+const base = site => `http://${site}.dashhq.localhost:8787`
+try {
+  for (const phone of [false,true]) for (const theme of ['light','dark']) {
+    const tag = `${phone ? 'phone' : 'desktop'}-${theme}`
+    const blocked = [], errors = [], prices = []
+    const context = await browser.newContext({ viewport:{width:phone?390:1440,height:phone?844:900},isMobile:phone,hasTouch:phone,colorScheme:theme,deviceScaleFactor:1,locale:'en-US',timezoneId:'UTC',serviceWorkers:'block' })
+    await installQaGuard(context,{onBlocked:value=>blocked.push(value)})
+    await context.addCookies([{name:'dh_theme',value:theme,domain:'.dashhq.localhost',path:'/'}])
+    const page = await context.newPage()
+    page.on('pageerror',e=>errors.push(e.message))
+    page.on('request',r=>{if(/coinbase|coingecko|ctx\.com|cryptocompare/.test(r.url()))prices.push(r.url())})
+    const shot = async name => { await page.screenshot({path:`${output}/${name}-${tag}.png`}) }
+    const layout = async site => {
+      assert.equal(await page.locator('dashhq-bar').count(),1,site)
+      assert.equal(await page.locator('dashhq-footer').count(),1,site)
+      assert.equal(await page.locator('html').getAttribute('data-theme'),theme,site)
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${site}: no overflow`)
+    }
+    const menu = async site => {
+      if (!phone) return
+      await page.evaluate(()=>scrollTo(0,0))
+      const trigger=page.locator('dashhq-bar').getByRole('button',{name:'Menu',exact:true})
+      await trigger.click()
+      await shot(`${site}-menu`)
+      const duplicate=await page.locator('dashhq-bar').evaluate(bar=>{
+        const links=[...bar.querySelectorAll('nav a'),...bar.shadowRoot.querySelectorAll('.sheet a')].filter(a=>a.getBoundingClientRect().height>0)
+        const destinations=links.map(a=>a.href)
+        return destinations.filter((href,i)=>destinations.indexOf(href)!==i)
+      })
+      assert.deepEqual(duplicate,[],`${site}: menu destinations are unique`)
+      await page.keyboard.press('Escape')
+    }
+    await page.goto(base('pollr'))
+    await page.getByRole('heading',{name:'What should I ask?',exact:true}).waitFor({timeout:60000})
+    assert.equal(await page.getByText('A Secondary poll',{exact:true}).count(),0)
+    const recorded=page.getByRole('region',{name:'Recorded polls'})
+    await recorded.scrollIntoViewIfNeeded()
+    await shot('pollr-recorded')
+    await page.getByRole('button',{name:'Archive',exact:true}).click()
+    assert.equal(await recorded.locator('article').count(),2)
+    assert.equal(await page.getByLabel('Include automated and practice records').isChecked(),false)
+    assert.equal(await page.getByText('No polls match this view',{exact:false}).count(),0)
+    const example=page.getByRole('region',{name:'Which day works for our meetup?'})
+    await example.getByRole('button',{name:'Sunday afternoon',exact:true}).click()
+    await page.reload()
+    await page.getByText('Your example vote is recorded in this browser.',{exact:false}).waitFor()
+    await example.getByRole('button',{name:'Reset browser example'}).click()
+    await layout('pollr')
+    await menu('pollr')
+    await page.locator('dashhq-bar [slot="actions"] button').click()
+    const dialog=page.getByRole('dialog')
+    await dialog.waitFor()
+    assert.equal(await dialog.getByLabel('Private key (WIF)',{exact:true}).isVisible(),false)
+    await shot('pollr-signin')
+    await dialog.getByText('Advanced: private key',{exact:true}).click()
+    assert.equal(await dialog.getByLabel('Private key (WIF)',{exact:true}).isVisible(),true)
+    await page.getByRole('button',{name:'Close',exact:true}).click()
+    await page.goto(base('forge'))
+    const live=page.locator('[data-testid="example-live-contents"]')
+    await live.waitFor({timeout:90000})
+    assert.ok(await live.locator('a[href*="/repo/blob"]').count())
+    await live.scrollIntoViewIfNeeded()
+    await shot('forge-contents')
+    await page.getByText('Illustration: README, issue and review views',{exact:true}).first().click()
+    await page.getByLabel('Illustration only',{exact:true}).scrollIntoViewIfNeeded()
+    await shot('forge-illustration')
+    const fileHref=await live.locator('a[href*="/repo/blob"]').first().getAttribute('href')
+    await page.goto(base('forge')+fileHref)
+    await page.locator('[data-testid="copy-permalink"]').waitFor({timeout:90000})
+    await layout('forge')
+    await page.goto(`${base('forge')}/explore/`)
+    assert.equal(await page.getByLabel('Find repositories by name prefix',{exact:true}).count(),1)
+    await page.getByLabel('Find repositories by name prefix',{exact:true}).fill('dash')
+    await page.getByRole('button',{name:'Search',exact:true}).click()
+    await shot('forge-search')
+    await menu('forge')
+    await page.locator('dashhq-bar [data-replay="sign-in"]').click()
+    await page.getByRole('dialog').waitFor()
+    assert.equal(await page.locator('[data-testid="tile-advanced"]').isVisible(),false)
+    await shot('forge-signin')
+    await page.goto(base('yappr'))
+    await page.getByRole('heading',{name:'Conversations worth opening'}).waitFor()
+    await page.locator('article time[datetime]').first().waitFor({timeout:90000})
+    await page.waitForTimeout(8000)
+    const dates=await page.locator('time[datetime]').evaluateAll(nodes=>nodes.map(n=>n.dateTime))
+    assert.ok(dates.length>0)
+    await layout('yappr')
+    await shot('yappr-conversations')
+    await menu('yappr')
+    await page.locator('dashhq-bar [slot="actions"] button').click()
+    await page.getByRole('dialog').waitFor()
+    assert.equal(await page.getByRole('button',{name:'Private key (WIF)',exact:true}).isVisible(),false)
+    await shot('yappr-signin')
+    await page.getByRole('button',{name:'Passkey',exact:false}).first().click()
+    assert.equal(await page.getByLabel('Private key (WIF)',{exact:true}).count(),0)
+    assert.deepEqual(blocked,[])
+    assert.deepEqual(errors,[])
+    assert.deepEqual(prices,[],'No fiat for Testnet')
+    report.cases.push({tag,dates,blocked,errors,prices,status:'pass'})
+    await context.close()
+    console.log(`${tag}: recorded polls, local vote, auth disclosure, live files, clone workflow, illustration, searches, conversations, theme and navigation pass`)
+  }
+} catch(error) { report.error=String(error.stack||error);throw error }
+finally { report.finished=new Date().toISOString();await writeFile(`${output}/report.json`,JSON.stringify(report,null,2));await browser.close() }

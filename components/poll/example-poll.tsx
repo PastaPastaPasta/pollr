@@ -60,10 +60,11 @@ export function ExamplePoll() {
           {choice !== null && <button type="button" className="dh-btn dh-btn--link mt-2" onClick={reset}>Reset browser example</button>}
         </div>
         <div className="text-sm text-[var(--dh-ink-2)] space-y-3">
-          <h3 className="dh-card__title text-[var(--dh-ink)]">One identity, one vote</h3>
+          <details><summary className="cursor-pointer dh-card__title text-[var(--dh-ink)]">How real votes work</summary><div className="mt-3 space-y-3">
           <p>In a real single-choice poll, your Testnet identity signs a vote. Platform’s unique index allows one vote per identity per poll and rejects a second vote, even from another device.</p>
           <p>This example simulates one identity with browser storage. Clearing it resets the example; it cannot reset a real Platform vote. An identity is an account, not proof of a unique person.</p>
           <p>Multiple-choice polls allow one vote per identity for each option. Close times are advisory and enforced by Pollr’s interface.</p>
+          </div></details>
           <Link href="/create" className="dh-btn dh-btn--secondary">Write your first poll →</Link>
         </div>
       </div>
