@@ -11,7 +11,7 @@ for (const [url, expected] of [
   ['https://pollr.dashhq.org/poll/?id=GBCR8JqtXNMZa4B16ZAYm3RkNHrPcU3D36jcAoYWvr8E&archive=1&network=mainnet', '/polls/GBCR8JqtXNMZa4B16ZAYm3RkNHrPcU3D36jcAoYWvr8E?archive=1&network=testnet'],
 ]) test(url, () => {
   let actual;
-  vm.runInNewContext(source, { URL, URLSearchParams, location: new URL(url), document: { documentElement: { dataset: {} }, querySelector: () => ({ setAttribute: (_, value) => { actual = value; } }) } });
+  vm.runInNewContext(source, { URL, URLSearchParams, history: { replaceState() {} }, location: new URL(url), document: { documentElement: { dataset: {} }, querySelector: () => ({ setAttribute: (_, value) => { actual = value; } }) } });
   assert.equal(actual, expected);
 });
 test('forwarding exports use strict CSP and the shared moved element', () => {

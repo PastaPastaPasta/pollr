@@ -15,5 +15,10 @@
   if (route === '/poll' && query.get('archive') === '1') target.searchParams.set('archive', '1');
   target.searchParams.set('network', 'testnet');
   target.hash = location.hash;
+  const current = new URL(location.href);
+  current.searchParams.delete('id');
+  current.searchParams.delete('profile');
+  current.searchParams.set('network', 'testnet');
+  history.replaceState(history.state, '', current);
   moved.setAttribute('path', target.pathname + target.search + target.hash);
 })();
