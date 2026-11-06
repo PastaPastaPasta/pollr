@@ -308,7 +308,7 @@ export function LoginModal() {
                         )}
                       </Button>
                     </form>
-                    <Link href="/" onClick={() => handleOpenChange(false)} className="dh-link dh-link--go inline-flex min-h-10 items-center text-sm">Browse polls without signing in →</Link>
+                    <Link href="/" onClick={() => handleOpenChange(false)} className="dh-link inline-flex min-h-10 items-center text-sm">Keep reading without signing in</Link>
 
 
                   </motion.div>
