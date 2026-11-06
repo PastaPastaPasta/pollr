@@ -19,7 +19,7 @@ try {
     const page = await context.newPage()
     page.on('pageerror',e=>errors.push(e.message))
     page.on('request',r=>{if(/coinbase|coingecko|ctx\.com|cryptocompare/.test(r.url()))prices.push(r.url())})
-    const shot = async name => { await page.screenshot({path:`${output}/${name}-${tag}.png`}) }
+    const shot = async name => { await page.screenshot({path:`${output}/${name}-${tag}.png`,animations:'disabled'}) }
     const layout = async site => {
       assert.equal(await page.locator('dashhq-bar').count(),1,site)
       assert.equal(await page.locator('dashhq-footer').count(),1,site)
@@ -33,6 +33,7 @@ try {
       await page.evaluate(()=>scrollTo(0,0))
       const trigger=page.locator('dashhq-bar').getByRole('button',{name:'Menu',exact:true})
       await trigger.click()
+      await page.locator('dashhq-bar').getByRole('button',{name:'More tools',exact:true}).waitFor({state:'visible'})
       await shot(`${site}-menu`)
       const uniqueDestinations = async () => {
         const duplicate=await page.locator('dashhq-bar').evaluate(bar=>{
@@ -44,8 +45,9 @@ try {
       }
       await uniqueDestinations()
       await page.locator('dashhq-bar').getByRole('button',{name:'More tools',exact:true}).click()
-      await uniqueDestinations()
+      await page.evaluate(()=>scrollTo(0,0))
       await shot(`${site}-more-tools`)
+      await uniqueDestinations()
       await page.keyboard.press('Escape')
     }
     await page.goto(base('pollr'))
