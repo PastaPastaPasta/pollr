@@ -33,7 +33,6 @@ export function Header() {
             <summary className="dh-btn dh-btn--quiet" aria-label="Your account">{user.dpnsUsername || user.identityId.slice(0, 1)}</summary>
             <div className="dh-card">
               <p>{user.dpnsUsername || user.identityId}</p>
-              <Link className="dh-btn dh-btn--quiet" href="/my-polls">My polls</Link>
               <Button variant="ghost" size="sm" onClick={() => { logout().catch(() => {}) }}><LogOut className="h-4 w-4" />Sign out</Button>
             </div>
           </details>
