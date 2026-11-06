@@ -23,6 +23,8 @@ try {
     const layout = async site => {
       assert.equal(await page.locator('dashhq-bar').count(),1,site)
       assert.equal(await page.locator('dashhq-footer').count(),1,site)
+      assert.equal(await page.evaluate(()=>window.dashhq.version),'1.8.0',site)
+      if (!phone) assert.equal(await page.locator('dashhq-bar').getByRole('button',{name:'All dashhq tools',exact:true}).innerText(),'dashhq tools',site)
       assert.equal(await page.locator('html').getAttribute('data-theme'),theme,site)
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${site}: no overflow`)
     }
