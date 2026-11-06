@@ -142,6 +142,7 @@ try {
     assert.equal(await keyField.isVisible(),true)
     if (phone) { await keyField.scrollIntoViewIfNeeded(); await shot('yappr-advanced') }
     await page.getByText('Advanced: private key',{exact:true}).click()
+    await keyField.waitFor({state:'detached'})
     assert.equal(await keyField.count(),0)
     assert.deepEqual(blocked,[])
     assert.deepEqual(errors,[])
