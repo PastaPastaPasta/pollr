@@ -11,7 +11,8 @@ Local changes only on `lab/unified`. No pushes, deployments, PRs or on-chain wri
 | Sol #9, Yappr discovery | Rank genuine public posts by replies, then recency, then likes/reposts. Keep real activity dates and disclose the bounded English-language public sample. No activity is manufactured. |
 | Sol #2, sign-in | Keep header Sign in in all three apps. Use identical shared method names, wallet-approval recommendation and explanation where offered, and Advanced: private key disclosures. Pollr still supports keys only; its safest available recommendation is a dedicated Testnet identity and the existing tab-only default. Auth, key storage and scopes are unchanged. |
 | Sol #18, Forge searches | Persistent, distinct labels for jumping to a known target and searching repository-name prefixes; short example placeholder fits phones. |
-| Opus #7 / Sol #14–15 / Opus #10 | Shared shell adoption covers phone menu deduplication, visible desktop Tools, and the canonical Directory destination. Final shell version is recorded in screenshot reports. |
+| Opus #7 / Sol #15 / Opus #10 | Adopt shell 1.7.0 unchanged: short phone menu, disclosed secondary tools and canonical Directory destination. Remove Pollr’s duplicate account link; expose Yappr Store/Blog in its footer. Final shell version is recorded in screenshot reports. |
+| Sol #14, desktop Tools label | Not fixed in the supplied shell 1.7.0: the desktop family switcher still draws only a chevron. This belongs to the shared design source, outside these repos; vendored bytes stay unchanged. |
 | Source attribution / fiat | Pollr archive sources, IDs and read time are disclosed away from its prose. Forge distinguishes Platform push time from source-commit time. Yappr names its sample and UTC read time. No fiat is shown or fetched for these Testnet entry flows; tDASH price lookup is explicitly disabled even on forced refresh. Existing store sticker prices remain exact prices. |
 
 ## Evidence matrix
@@ -38,7 +39,7 @@ Forge reads `AxKhmvArbnKqpwbgno7jE7eo2nCQKTm1qpMXs2WmwfaZ` (dash-fork-checker). 
 - Forge: lint/typecheck; full suite initially reports 10,028 passes, two inherited histogram-parity failures, and one wallet-copy assertion subsequently fixed. All 60 focused auth/showcase/clone-command tests pass after restoring the one-approval wording. The two histogram failures match the pre-existing round-5 integration limitation.
 - Local builds: `lab/build.sh pollr forge yappr`, sequential and bounded by the lab tooling.
 - Browser tests: `node repos/pollr/scripts/qa-round6.mjs`; standard captures: `node lab/shots.mjs --label r6-s4 --sites pollr,forge,yappr`.
-- Review-validator: correctness, maintainability, architecture, and auth/input/error handling passes over actual diffs. Missing-repository handling was corrected to avoid an endless loader. Archive tally failure stays unknown. No auth/security or CSP behavior changed.
+- Review-validator: APPROVED for the app changes after correctness, maintainability, architecture, and auth/input/error handling passes over actual diffs. Missing-repository handling was corrected to avoid an endless loader; the push-evidence link now selects its branch. Archive tally failure stays unknown. No auth/security or CSP behavior changed. The inherited test failures and shared desktop switcher label remain disclosed limits.
 - Simplifier: reuse the existing browse/proof boundaries and clone-command builder, and narrow the practice-filter input to the fields it needs. Avoid a second auth/discovery framework.
 
 ## Limits
