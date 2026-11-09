@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 const source = readFileSync(new URL('../public/retirement.js', import.meta.url), 'utf8');
 for (const [url, expected] of [
   ['https://pollr.dashhq.org/', '/polls?network=testnet'],
+  ['https://pollr.dashhq.org/login/', '/polls?signin=1&network=testnet'],
   ['https://pollr.dashhq.org/create/', '/polls/new?network=testnet'],
   ['https://pollr.dashhq.org/my-polls/', '/polls?seg=mine&network=testnet'],
   ['https://pollr.dashhq.org/poll/?id=GBCR8JqtXNMZa4B16ZAYm3RkNHrPcU3D36jcAoYWvr8E#answers', '/polls/GBCR8JqtXNMZa4B16ZAYm3RkNHrPcU3D36jcAoYWvr8E?network=testnet#answers'],

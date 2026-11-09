@@ -7,6 +7,7 @@
   let path = '/polls';
   const id = query.get('id');
   if (route === '/create') path += '/new';
+  else if (route === '/login') path += '?signin=1';
   else if (route === '/my-polls') path += '?seg=mine';
   else if (route === '/archive') path += '/archive';
   else if (route === '/poll' && id && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(id)) path += `/${id}`;

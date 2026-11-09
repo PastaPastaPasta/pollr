@@ -7,7 +7,7 @@ if (base && !/^\/[a-zA-Z0-9/_-]+$/.test(base)) throw Error('Invalid BASE_PATH');
 const sri = async file => `sha384-${createHash('sha384').update(await fs.readFile(`public/${file}`)).digest('base64')}`;
 const script = async (file, defer = false) => `<script src="${base}/${file}" integrity="${await sri(file)}" crossorigin="anonymous"${defer ? ' defer' : ''}></script>`;
 const style = async file => `<link rel="stylesheet" href="${base}/${file}" integrity="${await sri(file)}" crossorigin="anonymous">`;
-const routes = { '': '/polls', create: '/polls/new', poll: '/polls', 'my-polls': '/polls?seg=mine', login: '/polls', archive: '/polls/archive' };
+const routes = { '': '/polls', create: '/polls/new', poll: '/polls', 'my-polls': '/polls?seg=mine', login: '/polls?signin=1', archive: '/polls/archive' };
 await fs.rm('out', { recursive: true, force: true });
 await fs.mkdir('out', { recursive: true });
 await fs.cp('public/dashhq', 'out/dashhq', { recursive: true });
