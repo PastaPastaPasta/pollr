@@ -1,0 +1,25 @@
+(() => {
+  const moved = document.querySelector('dashhq-moved');
+  if (!moved) return;
+  const query = new URLSearchParams(location.search);
+  const base = document.documentElement.dataset.base || '';
+  const route = location.pathname.slice(base.length).replace(/\/+$/, '') || '/';
+  let path = '/polls';
+  const id = query.get('id');
+  if (route === '/create') path += '/new';
+  else if (route === '/login') path += '?signin=1';
+  else if (route === '/my-polls') path += '?seg=mine';
+  else if (route === '/archive') path += '/archive';
+  else if (route === '/poll' && id && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(id)) path += `/${id}`;
+  const target = new URL(path, location.origin);
+  for (const [key, value] of query) if (!['id', 'network', 'profile', 'moved-from', 'seg'].includes(key)) target.searchParams.append(key, value);
+  if (route === '/poll' && query.get('archive') === '1') target.searchParams.set('archive', '1');
+  target.searchParams.set('network', 'testnet');
+  target.hash = location.hash;
+  const current = new URL(location.href);
+  current.searchParams.delete('id');
+  current.searchParams.delete('profile');
+  current.searchParams.set('network', 'testnet');
+  history.replaceState(history.state, '', current);
+  moved.setAttribute('path', target.pathname + target.search + target.hash);
+})();

@@ -1,0 +1,4 @@
+body { margin: 0; background: var(--dh-page); color: var(--dh-ink); font-family: var(--dh-font); }
+.dh-narrow { max-inline-size: 680px; margin-inline: auto; }
+.skip { position: fixed; inset-block-start: -100px; }
+.skip:focus { inset-block-start: 10px; z-index: 100; background: var(--dh-surface); padding: 12px; }

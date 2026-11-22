@@ -15,6 +15,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { voteService, applyCastVoteResult, type PollTally } from '@/lib/services/vote-service'
 import { logger } from '@/lib/logger'
 import { isPollClosed } from '@/lib/utils'
+import { RecordedPolls } from '@/components/poll/recorded-polls'
+import { ExamplePoll } from '@/components/poll/example-poll'
+import { selectHomePolls } from '@/lib/home-polls'
 import { reportCastVote } from '@/lib/vote-feedback'
 import toast from 'react-hot-toast'
 import type { EnrichedPoll } from '@/lib/services/poll-metadata-service'
@@ -115,14 +118,15 @@ interface PollListContentProps {
   isLoading: boolean
   polls: EnrichedPoll[]
   error: string | null
+  onRetry: () => void
 }
 
-function PollListContent({ isReady, isLoading, polls, error }: PollListContentProps) {
+function PollListContent({ isReady, isLoading, polls, error, onRetry }: PollListContentProps) {
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+      <div className="dh-loading dh-loading--block">
         <Spinner size="lg" />
-        <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
+        <p className="mt-4 text-sm">Connecting to Dash Platform…</p>
       </div>
     )
   }
@@ -139,9 +143,11 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
 
   if (error) {
     return (
-      <div className="text-center py-16">
-        <p className="text-red-500 mb-2">{error}</p>
-        <p className="text-sm text-gray-400">Please check your connection and try again.</p>
+      <div className="dh-error" role="alert">
+        <p className="dh-error__title">Couldn’t load polls</p>
+        <details><summary>Details</summary>{error}</details>
+        <p className="text-sm text-[var(--dh-ink-2)]">Please check your connection and try again.</p>
+        <Button variant="outline" className="mt-4" onClick={onRetry}>Try again</Button>
       </div>
     )
   }
@@ -151,12 +157,12 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-center py-16"
+        className="dh-empty"
       >
-        <BarChart3 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 mb-2">No polls yet</p>
-        <p className="text-sm text-gray-400 dark:text-gray-500">
-          Be the first to create one!
+        <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+        <p className="text-[var(--dh-ink-2)] mb-2">Your community’s questions go here</p>
+        <p className="text-sm text-[var(--dh-ink-2)]">
+          There are no new community polls in this sample. The recorded polls above remain available to inspect.
         </p>
       </motion.div>
     )
@@ -173,7 +179,27 @@ function PollListContent({ isReady, isLoading, polls, error }: PollListContentPr
 
 export default function HomePage() {
   const { isReady } = useSdk()
-  const { polls, isLoading, error } = usePolls()
+  const { polls, isLoading, error, refetch } = usePolls(100)
+  const [showAll, setShowAll] = useState(false)
+  const [showPractice, setShowPractice] = useState(false)
+  useEffect(() => {
+    const sync = () => {
+      const params = new URLSearchParams(window.location.search)
+      setShowAll(params.get('view') === 'all')
+      setShowPractice(params.get('practice') === '1')
+    }
+    sync()
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
+  }, [])
+  const changeView = (all: boolean) => {
+    setShowAll(all)
+    const url = new URL(window.location.href)
+    if (all) url.searchParams.set('view', 'all')
+    else url.searchParams.delete('view')
+    window.history.pushState(null, '', url)
+  }
+  const visiblePolls = selectHomePolls(polls, showAll, showAll && showPractice)
 
   return (
     <div className="space-y-8">
@@ -182,32 +208,44 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center py-12"
+        className="dh-page-header dh-page-header--home"
       >
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          <span className="text-gradient">Pollr</span>
+        <div className="dh-page-header__row"><div className="dh-page-header__text"><h1 className="dh-page-header__title">
+          Try a poll. Then ask your own question.
         </h1>
-        <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-          Create and vote on decentralized polls. Powered by Dash Platform — no backend, fully on-chain.
+        <p className="dh-page-header__lede">
+          Pollr is a Platform demo app: ask a question, share its link and record votes on Testnet. Reading is free. Creating or voting uses a Testnet identity; data may reset.
         </p>
-        <Link href="/create">
-          <Button size="lg" className="gap-2">
+        </div><div className="dh-page-header__actions"><Link href="/create">
+          <Button variant="outline" className="gap-2">
             <Plus className="h-5 w-5" />
-            Create a Poll
+            Write your first poll
           </Button>
-        </Link>
+        </Link></div></div>
       </motion.div>
 
-      {/* Recent Polls */}
+      <ExamplePoll />
+
+      {/* Recent polls */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="h-5 w-5 text-pollr-500" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Recent Polls
+          <BarChart3 className="h-5 w-5 text-[var(--dh-brand-ink)]" />
+          <h2 className="dh-section__title text-[var(--dh-ink)] dark:text-white">
+            Shared polls
           </h2>
         </div>
 
-        <PollListContent isReady={isReady} isLoading={isLoading} polls={polls} error={error} />
+        <p className="text-sm text-[var(--dh-ink-2)] mb-3">Inspect the original polls and their recorded ballots. The archive shows all readable original polls. Automated and practice records stay hidden by default.</p>
+        <div className="dh-seg mb-4" aria-label="Poll view"><button type="button" aria-pressed={!showAll} onClick={() => changeView(false)}>Community</button><button type="button" aria-pressed={showAll} onClick={() => changeView(true)}>Archive</button></div>
+        {showAll && <label className="dh-check mb-4"><input type="checkbox" checked={showPractice} onChange={e => {
+          setShowPractice(e.target.checked)
+          const url = new URL(window.location.href)
+          if (e.target.checked) url.searchParams.set('practice', '1')
+          else url.searchParams.delete('practice')
+          window.history.pushState(null, '', url)
+        }} /> Include automated and practice records</label>}
+        <RecordedPolls all={showAll} />
+        {(isLoading || error || visiblePolls.length > 0 || (showAll && showPractice)) && <div className="mt-6"><PollListContent isReady={isReady} isLoading={isLoading} polls={visiblePolls} error={error} onRetry={() => { void refetch() }} /></div>}
       </div>
     </div>
   )

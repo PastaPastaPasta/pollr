@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Share2, AlertCircle } from 'lucide-react'
+import { Share2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PollCard } from '@/components/poll/poll-card'
 import { PollSkeleton } from '@/components/poll/poll-skeleton'
@@ -37,7 +37,7 @@ function PollPageContent() {
   const handleShare = useCallback(() => {
     const url = window.location.href
     navigator.clipboard.writeText(url).then(() => {
-      toast.success('Poll link copied to clipboard!')
+      toast.success('Poll link copied to clipboard')
     }).catch(() => {
       toast.error('Failed to copy link')
     })
@@ -45,10 +45,10 @@ function PollPageContent() {
 
   if (!pollId) {
     return (
-      <div className="text-center py-16">
-        <AlertCircle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500">No poll ID provided</p>
-        <Link href="/" className="text-pollr-500 hover:text-pollr-600 text-sm mt-2 inline-block">
+      <div className="dh-empty">
+        <AlertCircle className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+        <p className="text-[var(--dh-ink-2)]">No poll ID provided</p>
+        <Link href="/" className="text-[var(--dh-brand-ink)] hover:text-[var(--dh-brand-ink)] text-sm mt-2 inline-block">
           Back to polls
         </Link>
       </div>
@@ -57,9 +57,9 @@ function PollPageContent() {
 
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+      <div className="dh-loading dh-loading--block">
         <Spinner size="lg" />
-        <p className="mt-4 text-sm">Connecting to Dash Platform...</p>
+        <p className="mt-4 text-sm">Connecting to Dash Platform…</p>
       </div>
     )
   }
@@ -73,13 +73,13 @@ function PollPageContent() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-center py-16"
+        className="dh-empty"
       >
-        <AlertCircle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 mb-2">
+        <AlertCircle className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+        <p className="text-[var(--dh-ink-2)] mb-2">
           {error || 'Poll not found'}
         </p>
-        <Link href="/" className="text-pollr-500 hover:text-pollr-600 text-sm">
+        <Link href="/" className="text-[var(--dh-brand-ink)] hover:text-[var(--dh-brand-ink)] text-sm">
           Back to polls
         </Link>
       </motion.div>
@@ -88,23 +88,20 @@ function PollPageContent() {
 
   return (
     <div className="space-y-4">
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to polls
-        </Link>
-        <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5">
-          <Share2 className="h-4 w-4" />
-          Share
-        </Button>
-      </div>
-
+      <header className="dh-page-header">
+        <div className="dh-page-header__row">
+          <div className="dh-page-header__text">
+            <nav className="dh-crumbs" aria-label="Breadcrumb"><Link href="/">Polls</Link><span>{poll.question}</span></nav>
+            <h1 className="dh-page-header__title">{poll.question}</h1>
+          </div>
+          <div className="dh-page-header__actions">
+            <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5"><Share2 className="h-4 w-4" />Share</Button>
+          </div>
+        </div>
+      </header>
       {/* Poll */}
       <PollCard
+        detail
         poll={poll}
         ownerUsername={ownerUsername}
         voteCounts={voteCounts}

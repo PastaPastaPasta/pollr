@@ -15,17 +15,17 @@ function MyPollsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          My Polls
+      <header className="dh-page-header"><div className="dh-page-header__row">
+        <h1 className="dh-page-header__title text-[var(--dh-ink)] dark:text-white">
+          My polls
         </h1>
         <Link href="/create">
           <Button size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" />
-            New Poll
+            New poll
           </Button>
         </Link>
-      </div>
+      </div></header>
 
       {isLoading ? (
         <div className="space-y-4">
@@ -36,10 +36,10 @@ function MyPollsPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-16"
+          className="dh-empty"
         >
-          <BarChart3 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 mb-2">
+          <BarChart3 className="h-12 w-12 text-[var(--dh-ink-2)] mx-auto mb-4" />
+          <p className="text-[var(--dh-ink-2)] mb-2">
             You haven&apos;t created any polls yet
           </p>
           <Link href="/create">

@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:subpath": "BASE_PATH=/pollr next build",
+    "build": "node scripts/build-retirement.mjs",
+    "build:subpath": "BASE_PATH=/pollr node scripts/build-retirement.mjs",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test scripts/retirement.test.mjs"
   },
   "dependencies": {
     "@dashevo/evo-sdk": "4.2.0-dev.1",

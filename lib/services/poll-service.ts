@@ -153,7 +153,7 @@ class PollService extends BaseDocumentService<PollDocument> {
       return result.documents;
     } catch (error) {
       logger.error('Error getting recent polls:', error);
-      return [];
+      throw error;
     }
   }
 

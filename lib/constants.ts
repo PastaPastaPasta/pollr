@@ -2,9 +2,8 @@
 export const POLLR_CONTRACT_ID = 'GBCR8JqtXNMZa4B16ZAYm3RkNHrPcU3D36jcAoYWvr8E' // Testnet (v3 schema)
 
 /**
- * Superseded Pollr contracts, abandoned in place. The app no longer reads or writes them; the
- * IDs are kept so they are never reused and a read-only archive view could still surface the
- * old polls.
+ * Superseded Pollr contracts, abandoned in place. Never written by this app. The original
+ * contract remains available as a read-only archive; these IDs must never be reused.
  *
  * v1 stored the question and options as JSON inside byte arrays, with one vote document per
  * voter. v2 introduced count trees but had a single `vote` doctype unique on

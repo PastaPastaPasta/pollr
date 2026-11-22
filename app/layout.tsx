@@ -8,7 +8,7 @@ import { AppShell } from '@/components/layout/app-shell'
 const basePath = process.env.BASE_PATH || ''
 
 export const metadata: Metadata = {
-  title: 'Pollr - Decentralized Polls on Dash Platform',
+  title: 'Pollr · dashhq',
   description: 'Create and vote on polls, powered by Dash Platform. No backend, fully decentralized.',
   icons: {
     icon: `${basePath}/favicon.ico`,
@@ -21,14 +21,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en" data-dh-accent="pollr" className="h-full" suppressHydrationWarning>
       <head>
+        {/* Blocking external script sets the shared theme before first paint. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src={`${basePath}/dashhq/dashhq-shell.js`} />
+        <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-tokens.css`} />
+        <link rel="stylesheet" href={`${basePath}/dashhq/dashhq-shell.css`} />
+
         <meta
           httpEquiv="Content-Security-Policy"
           content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:; child-src 'self' blob:"
         />
       </head>
-      <body className="font-sans h-full bg-white dark:bg-neutral-900">
+      <body className="font-sans h-full bg-[var(--dh-page)]">
         <ErrorBoundary level="app">
           <Providers>
             <AppShell>
@@ -43,9 +49,10 @@ export default function RootLayout({
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#1f2937',
-              color: '#fff',
-              borderRadius: '8px',
+              background: 'var(--dh-surface)',
+              color: 'var(--dh-ink)',
+              border: '1px solid var(--dh-line)',
+              borderRadius: 'var(--dh-r3)',
               padding: '12px 16px',
               fontSize: '14px',
             },

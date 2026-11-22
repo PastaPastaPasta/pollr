@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Switch from '@radix-ui/react-switch'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -9,7 +10,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSdk } from '@/contexts/sdk-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/ui/spinner'
 import { X } from 'lucide-react'
 import { truncateId } from '@/lib/utils'
 
@@ -118,7 +118,7 @@ export function LoginModal() {
       setLookupError(null)
       close()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to login')
+      setError(err instanceof Error ? err.message : 'Could not sign in')
     } finally {
       setIsLoading(false)
     }
@@ -165,30 +165,39 @@ export function LoginModal() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900"
+                    className="dh-dialog relative max-h-[calc(100dvh-32px)] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Close button */}
-                    <Dialog.Close asChild>
-                      <button
-                        className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-                        aria-label="Close"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </Dialog.Close>
-
-                    <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Login to Pollr
-                    </Dialog.Title>
-                    <Dialog.Description className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Enter your Dash identity ID or DPNS username and your private key.
+                    <div className="dh-dialog__head">
+                      <Dialog.Title className="dh-dialog__title">
+                        Sign in to Pollr
+                      </Dialog.Title>
+                      <Dialog.Close asChild>
+                        <button
+                          className="dh-btn dh-btn--quiet dh-btn--icon"
+                          aria-label="Close"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </Dialog.Close>
+                    </div>
+                    <Dialog.Description className="dh-dialog__lede">
+                      Reading is free. Sign in to create a poll or vote.
                     </Dialog.Description>
 
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                    <dashhq-signin-help
+                      className="mt-4"
+                      product="pollr" network="testnet" asks="key"
+                      kept={rememberMe ? 'browser' : 'tab'}
+                      why="It signs the polls you create and your votes."
+                      kept-note="Your signing key is not encrypted. Use a dedicated Testnet identity; this key can authorize actions beyond Pollr."
+                    />
+                    <p className="mt-4 text-sm text-[var(--dh-ink-2)]">Use a dedicated Testnet identity and keep the default tab-only session to limit how long this browser retains your key. Pollr currently supports private-key sign-in only.</p>
+                    <details className="mt-4"><summary className="dh-btn dh-btn--quiet cursor-pointer">Advanced: private key</summary>
+                    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                       {!isReady && (
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-300">
-                          Connecting to Dash Platform...
+                        <div className="dh-card px-3 py-2 text-sm text-[var(--dh-ink-2)]">
+                          Connecting to Dash Platform…
                         </div>
                       )}
 
@@ -196,12 +205,15 @@ export function LoginModal() {
                       <div className="space-y-2">
                         <label
                           htmlFor="identity-id"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          className="dh-field__label"
                         >
-                          Identity ID or DPNS Username
+                          Identity ID or username
                         </label>
                         <Input
                           id="identity-id"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          aria-invalid={Boolean(lookupError)}
                           type="text"
                           placeholder="Enter your identity ID or name.dash"
                           value={identityInput}
@@ -210,17 +222,17 @@ export function LoginModal() {
                           required
                         />
                         {isLookingUp && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Resolving identity...
+                          <p className="text-xs text-[var(--dh-ink-2)]">
+                            Resolving identity…
                           </p>
                         )}
                         {!isLookingUp && resolvedIdentity && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-[var(--dh-ink-2)]">
                             Signing in as {resolvedIdentity.dpnsUsername || truncateId(resolvedIdentity.identityId)}
                           </p>
                         )}
                         {!isLookingUp && lookupError && (
-                          <p className="text-xs text-red-500">{lookupError}</p>
+                          <p className="text-xs text-[var(--dh-bad)]">{lookupError}</p>
                         )}
                       </div>
 
@@ -228,12 +240,16 @@ export function LoginModal() {
                       <div className="space-y-2">
                         <label
                           htmlFor="private-key"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          className="dh-field__label"
                         >
-                          Private Key
+                          Private key (WIF)
                         </label>
                         <Input
                           id="private-key"
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          aria-describedby="key-hint"
                           type="password"
                           placeholder="Enter your private key (WIF)"
                           value={privateKey}
@@ -243,46 +259,60 @@ export function LoginModal() {
                         />
                       </div>
 
+                      <p id="key-hint" className="text-xs text-[var(--dh-ink-2)]">
+                        WIF format, from your Bridge backup. Never your recovery phrase or Master key.
+                      </p>
+
                       {/* Remember Me */}
                       <div className="flex items-center justify-between">
                         <label
                           htmlFor="remember-me"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          className="dh-field__label"
                         >
-                          Remember me
+                          Keep me signed in in this browser
                         </label>
                         <Switch.Root
                           id="remember-me"
                           checked={rememberMe}
                           onCheckedChange={setRememberMe}
                           disabled={isLoading || !isReady}
-                          className="relative h-6 w-11 cursor-pointer rounded-full bg-gray-200 transition-colors data-[state=checked]:bg-pollr-500 dark:bg-gray-700"
+                          className="relative h-6 w-11 cursor-pointer rounded-full bg-[var(--dh-line)] transition-colors data-[state=checked]:bg-[var(--dh-brand-fill)]"
                         >
                           <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
                         </Switch.Root>
                       </div>
 
+                      <p className="text-xs text-[var(--dh-ink-2)]" aria-live="polite">
+                        {rememberMe
+                          ? 'Your key will stay in this browser’s local storage until you sign out. It is not encrypted.'
+                          : 'Your key stays in this tab’s session storage until the tab closes or you sign out. It is not encrypted.'}
+                      </p>
+
                       {/* Error message */}
                       {error && (
-                        <p className="text-sm text-red-500">{error}</p>
+                        <p className="text-sm text-[var(--dh-bad)]">{error}</p>
                       )}
 
                       {/* Submit button */}
                       <Button
                         type="submit"
-                        className="w-full bg-gradient-pollr hover:opacity-90"
+                        variant="primary" className="w-full"
                         disabled={!canSubmit}
+                        aria-busy={isLoading}
                       >
                         {isLoading ? (
                           <span className="flex items-center gap-2">
-                            <Spinner size="xs" className="border-white" />
-                            Logging in...
+
+                            Signing in…
                           </span>
                         ) : (
-                          'Login'
+                          'Sign in'
                         )}
                       </Button>
-                    </form>
+                    </form></details>
+                    <Link href="/" onClick={() => handleOpenChange(false)} className="dh-link inline-flex min-h-10 items-center text-sm">Keep reading without signing in</Link>
+
+
                   </motion.div>
                 </Dialog.Content>
               </motion.div>

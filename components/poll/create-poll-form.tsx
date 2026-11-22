@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Spinner } from '@/components/ui/spinner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { useLoginModal } from '@/hooks/use-login-modal'
 import { useAuth } from '@/contexts/auth-context'
 import { pollService } from '@/lib/services/poll-service'
 import {
@@ -31,6 +31,7 @@ const DURATION_OPTIONS: { value: string; label: string; ms: number | null }[] = 
 export function CreatePollForm() {
   const router = useRouter()
   const { user } = useAuth()
+  const { open: openLogin } = useLoginModal()
 
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState<string[]>(['', ''])
@@ -76,7 +77,8 @@ export function CreatePollForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user || !isValid) return
+    if (!isValid || isSubmitting) return
+    if (!user) { openLogin(); return }
 
     const trimmedOptions = options
       .map((o) => o.trim())
@@ -113,17 +115,15 @@ export function CreatePollForm() {
   }
 
   return (
+    <div className="grid gap-6 lg:grid-cols-2 items-start">
     <Card>
-      <CardHeader>
-        <CardTitle>Create a Poll</CardTitle>
-      </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Question */}
-          <div className="space-y-2">
+          <div className="dh-field">
             <label
               htmlFor="question"
-              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="dh-field__label"
             >
               Question
             </label>
@@ -139,8 +139,8 @@ export function CreatePollForm() {
               <span
                 className={`text-xs ${
                   question.length >= MAX_QUESTION_LENGTH
-                    ? 'text-red-500'
-                    : 'text-gray-400'
+                    ? 'text-[var(--dh-bad)]'
+                    : 'text-[var(--dh-ink-2)]'
                 }`}
               >
                 {question.length}/{MAX_QUESTION_LENGTH}
@@ -149,14 +149,15 @@ export function CreatePollForm() {
           </div>
 
           {/* Options */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="dh-field">
+            <label className="dh-field__label">
               Options
             </label>
             {options.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Input
+                    aria-label={`Option ${index + 1}`}
                     placeholder={`Option ${index + 1}`}
                     value={option}
                     onChange={(e) => handleOptionChange(index, e.target.value)}
@@ -164,7 +165,7 @@ export function CreatePollForm() {
                     maxLength={MAX_OPTION_LENGTH}
                   />
                   {option.length > MAX_OPTION_LENGTH * 0.8 && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dh-ink-2)]">
                       {option.length}/{MAX_OPTION_LENGTH}
                     </span>
                   )}
@@ -174,9 +175,10 @@ export function CreatePollForm() {
                     type="button"
                     variant="ghost"
                     size="icon"
+                    aria-label={`Remove option ${index + 1}`}
                     onClick={() => removeOption(index)}
                     disabled={isSubmitting}
-                    className="flex-shrink-0 text-gray-400 hover:text-red-500"
+                    className="flex-shrink-0 text-[var(--dh-ink-2)] hover:text-[var(--dh-bad)]"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -194,54 +196,54 @@ export function CreatePollForm() {
                 className="w-full"
               >
                 <Plus className="mr-1.5 h-4 w-4" />
-                Add Option
+                Add option
               </Button>
             )}
           </div>
 
-          {/* Poll Type */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Poll Type
+          {/* Poll type */}
+          <div className="dh-field">
+            <label className="dh-field__label">
+              Poll type
             </label>
-            <div className="flex gap-2">
+            <div className="dh-seg dh-seg--block">
               <Button
                 type="button"
-                variant={multiChoice ? 'outline' : 'default'}
+                aria-pressed={!multiChoice}
                 size="sm"
                 onClick={() => setMultiChoice(false)}
                 disabled={isSubmitting}
                 className="flex-1"
               >
-                Single Choice
+                Single choice
               </Button>
               <Button
                 type="button"
-                variant={multiChoice ? 'default' : 'outline'}
+                aria-pressed={multiChoice}
                 size="sm"
                 onClick={() => setMultiChoice(true)}
                 disabled={isSubmitting}
                 className="flex-1"
               >
-                Multiple Choice
+                Multiple choice
               </Button>
             </div>
           </div>
 
           {/* Close time */}
-          <div className="space-y-2">
+          <div className="dh-field">
             <label
               htmlFor="duration"
-              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="dh-field__label"
             >
-              Close Time <span className="text-gray-400">(optional)</span>
+              Close time <span className="text-[var(--dh-ink-2)]">(optional)</span>
             </label>
             <select
               id="duration"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 focus:border-pollr-500 focus:outline-none disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="dh-select w-full text-[var(--dh-ink)] dark:text-[var(--dh-ink)]"
             >
               {DURATION_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -249,7 +251,7 @@ export function CreatePollForm() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-[var(--dh-ink-2)]">
               Voting is hidden once the close time passes. This is advisory — it is not enforced
               on-chain.
             </p>
@@ -258,20 +260,31 @@ export function CreatePollForm() {
           {/* Submit */}
           <Button
             type="submit"
-            className="w-full bg-gradient-pollr hover:opacity-90"
+            variant="primary"
+            className="w-full"
             disabled={!isValid || isSubmitting}
+            aria-busy={isSubmitting}
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
-                <Spinner size="xs" className="border-white" />
-                Creating Poll...
+
+                Creating poll…
               </span>
             ) : (
-              'Create Poll'
+              user ? 'Publish poll on Testnet' : 'Sign in to publish'
             )}
           </Button>
         </form>
       </CardContent>
     </Card>
+    <section className="dh-card" aria-labelledby="poll-preview-title">
+      <p className="dh-badge dh-badge--outline mb-3">Preview — not published</p>
+      <h2 id="poll-preview-title" className="dh-section__title break-words">{question.trim() || 'Your question appears here'}</h2>
+      <p className="text-sm text-[var(--dh-ink-2)] my-3">{multiChoice ? 'Multiple choice · one vote per identity for each option' : 'Single choice · one vote per identity'}</p>
+      <ul className="divide-y divide-[var(--dh-line)] break-words">{options.map((option, i) => <li key={i} className="py-3">{option.trim() || `Option ${i + 1}`}</li>)}</ul>
+      <p className="mt-4 text-sm text-[var(--dh-ink-2)]">{DURATION_OPTIONS.find(option => option.value === duration)?.label}. No votes yet. After publishing, share the public link so your group can vote.</p>
+      <p className="mt-3 text-sm text-[var(--dh-ink-2)]">Polls and votes are public on Testnet. Close times are advisory. No data is sent while you preview.</p>
+    </section>
+    </div>
   )
 }

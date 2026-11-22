@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion'
 import { CreatePollForm } from '@/components/poll/create-poll-form'
-import { withAuth } from '@/contexts/auth-context'
 
 function CreatePollPage() {
   return (
@@ -11,12 +10,13 @@ function CreatePollPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-        Create a Poll
+      <header className="dh-page-header"><h1 className="dh-page-header__title text-[var(--dh-ink)] dark:text-white mb-6">
+        Write your first poll
       </h1>
+      <p className="dh-page-header__lede">Draft and preview without signing in. Publishing uses your Testnet identity and credits; drafts stay on this page.</p></header>
       <CreatePollForm />
     </motion.div>
   )
 }
 
-export default withAuth(CreatePollPage)
+export default CreatePollPage
